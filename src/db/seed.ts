@@ -35,24 +35,30 @@ export async function seedIfEmpty(): Promise<void> {
 
     const currentSeedVersion = appSettings.seedVersion ?? 0
 
-    if (currentSeedVersion < 3) {
-      // Borra SOLO los exercises con isCustom === false (los de fábrica viejos)
-      const oldBuiltinIds = (await db.exercises.toArray())
-        .filter((ex) => !ex.isCustom)
-        .map((ex) => ex.id)
+    // Auto-reparación: re-sembrar si la versión es vieja O si el catálogo quedó
+    // incompleto/vacío (p. ej. tras importar un backup parcial que lo sobrescribió).
+    const builtinCount = (await db.exercises.toArray()).filter((ex) => !ex.isCustom).length
+    const catalogMissing = builtinCount < catalog.length
 
-      if (oldBuiltinIds.length > 0) {
-        await db.exercises.bulkDelete(oldBuiltinIds)
+    if (currentSeedVersion < 3 || catalogMissing) {
+      // Solo al migrar de una versión vieja se borran los built-ins antiguos
+      // (para eliminar entradas que ya no están en el catálogo nuevo).
+      if (currentSeedVersion < 3) {
+        const oldBuiltinIds = (await db.exercises.toArray())
+          .filter((ex) => !ex.isCustom)
+          .map((ex) => ex.id)
+        if (oldBuiltinIds.length > 0) {
+          await db.exercises.bulkDelete(oldBuiltinIds)
+        }
       }
 
-      // Siembra el catálogo completo nuevo (isCustom: false)
+      // Siembra/restaura el catálogo completo (upsert por id; no toca los isCustom).
       const records: Exercise[] = catalog.map((exercise) => ({
         ...exercise,
         isCustom: false,
       }))
       await db.exercises.bulkPut(records)
 
-      // Marca la versión de seed migrada
       await db.settings.put({ ...appSettings, seedVersion: 3 })
     }
   })
