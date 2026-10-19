@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
   Scale,
   Gauge,
   Download,
+  Upload,
   CheckCircle2,
   AlertCircle,
   Cloud,
@@ -19,7 +20,12 @@ import { generateDemoData, clearDemoData } from '../utils/demoData'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { db } from '../db'
-import { exportJson, exportWorkoutsCsv, exportMeasurementsCsv } from '../utils/exportData'
+import {
+  exportJson,
+  exportWorkoutsCsv,
+  exportMeasurementsCsv,
+  importBackupFromText,
+} from '../utils/exportData'
 import { useAuthStore } from '../store'
 import { useSyncStore } from '../sync'
 import type { Settings } from '../types'
@@ -27,6 +33,8 @@ import type { Settings } from '../types'
 export function SettingsPage() {
   const [exportStatus, setExportStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const {
     user,
@@ -144,6 +152,33 @@ export function SettingsPage() {
       })
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const confirmed = window.confirm(
+      'Esto REEMPLAZARÁ tus datos actuales con los de la copia. Se descargará primero una copia de tus datos actuales por seguridad. ¿Continuar?'
+    )
+    if (!confirmed) {
+      e.target.value = ''
+      return
+    }
+
+    try {
+      setIsImporting(true)
+      const text = await file.text()
+      await importBackupFromText(text)
+      alert('Copia restaurada correctamente.')
+      window.location.reload()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      alert('No se pudo importar: ' + msg)
+    } finally {
+      setIsImporting(false)
+      e.target.value = ''
     }
   }
 
@@ -462,10 +497,18 @@ export function SettingsPage() {
         )}
 
         <div className="space-y-2 pt-1">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+
           <button
             type="button"
             onClick={() => handleExport('Backup JSON', exportJson)}
-            disabled={isExporting}
+            disabled={isExporting || isImporting}
             className="w-full py-3 px-4 rounded-xl text-xs font-semibold border bg-neutral-950 hover:bg-neutral-800/80 border-neutral-800 text-white flex items-center justify-between transition disabled:opacity-50"
           >
             <div className="flex items-center gap-2.5 text-left">
@@ -484,8 +527,28 @@ export function SettingsPage() {
 
           <button
             type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isExporting || isImporting}
+            className="w-full py-3 px-4 rounded-xl text-xs font-semibold border bg-neutral-950 hover:bg-neutral-800/80 border-neutral-800 text-white flex items-center justify-between transition disabled:opacity-50"
+          >
+            <div className="flex items-center gap-2.5 text-left">
+              <Upload size={16} className="text-neutral-400 shrink-0" />
+              <div>
+                <div className="font-bold">Importar copia (JSON)</div>
+                <div className="text-[11px] text-neutral-400">
+                  Restaura todas las tablas desde un archivo de copia previamente exportado
+                </div>
+              </div>
+            </div>
+            <span className="text-[10px] uppercase font-bold text-neutral-400 bg-neutral-800/80 px-2 py-0.5 rounded border border-neutral-700/60 shrink-0">
+              JSON
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleExport('CSV de entrenamientos', exportWorkoutsCsv)}
-            disabled={isExporting}
+            disabled={isExporting || isImporting}
             className="w-full py-3 px-4 rounded-xl text-xs font-semibold border bg-neutral-950 hover:bg-neutral-800/80 border-neutral-800 text-white flex items-center justify-between transition disabled:opacity-50"
           >
             <div className="flex items-center gap-2.5 text-left">
@@ -505,7 +568,7 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={() => handleExport('CSV de medidas', exportMeasurementsCsv)}
-            disabled={isExporting}
+            disabled={isExporting || isImporting}
             className="w-full py-3 px-4 rounded-xl text-xs font-semibold border bg-neutral-950 hover:bg-neutral-800/80 border-neutral-800 text-white flex items-center justify-between transition disabled:opacity-50"
           >
             <div className="flex items-center gap-2.5 text-left">

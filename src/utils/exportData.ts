@@ -1,6 +1,15 @@
 import { format } from 'date-fns'
 import { db } from '../db'
-import type { Exercise, Folder, Routine, Workout, Measurement, SettingsRecord } from '../types'
+import type {
+  Exercise,
+  Folder,
+  Routine,
+  Workout,
+  Measurement,
+  SettingsRecord,
+  ExerciseNote,
+  Settings,
+} from '../types'
 
 export interface RepLogBackup {
   app: 'RepLog'
@@ -13,6 +22,7 @@ export interface RepLogBackup {
     workouts: Workout[]
     measurements: Measurement[]
     settings: SettingsRecord[]
+    exerciseNotes: ExerciseNote[]
   }
 }
 
@@ -20,18 +30,20 @@ export interface RepLogBackup {
  * Recopila todas las tablas de Dexie para generar una copia de seguridad íntegra.
  */
 export async function buildBackup(): Promise<RepLogBackup> {
-  const [exercises, folders, routines, workouts, measurements, settings] = await Promise.all([
-    db.exercises.toArray(),
-    db.folders.toArray(),
-    db.routines.toArray(),
-    db.workouts.toArray(),
-    db.measurements.toArray(),
-    db.settings.toArray(),
-  ])
+  const [exercises, folders, routines, workouts, measurements, settings, exerciseNotes] =
+    await Promise.all([
+      db.exercises.toArray(),
+      db.folders.toArray(),
+      db.routines.toArray(),
+      db.workouts.toArray(),
+      db.measurements.toArray(),
+      db.settings.toArray(),
+      db.exerciseNotes.toArray(),
+    ])
 
   return {
     app: 'RepLog',
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     data: {
       exercises,
@@ -40,6 +52,147 @@ export async function buildBackup(): Promise<RepLogBackup> {
       workouts,
       measurements,
       settings,
+      exerciseNotes,
+    },
+  }
+}
+
+/**
+ * Restaura una copia de seguridad íntegra a partir de una cadena JSON.
+ * Descarga una copia de seguridad previa antes de sobrescribir.
+ */
+export async function importBackupFromText(
+  text: string
+): Promise<{ counts: Record<string, number> }> {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    throw new Error('Archivo JSON inválido')
+  }
+
+  if (
+    !parsed ||
+    typeof parsed !== 'object' ||
+    (parsed as { app?: unknown }).app !== 'RepLog' ||
+    !(parsed as { data?: unknown }).data ||
+    typeof (parsed as { data?: unknown }).data !== 'object'
+  ) {
+    throw new Error('No es una copia de RepLog')
+  }
+
+  const data = (parsed as { data: Record<string, unknown> }).data
+
+  const exercises = Array.isArray(data.exercises) ? (data.exercises as Exercise[]) : []
+  const folders = Array.isArray(data.folders) ? (data.folders as Folder[]) : []
+  const routines = Array.isArray(data.routines) ? (data.routines as Routine[]) : []
+  const workouts = Array.isArray(data.workouts) ? (data.workouts as Workout[]) : []
+  const measurements = Array.isArray(data.measurements) ? (data.measurements as Measurement[]) : []
+  const settings = Array.isArray(data.settings) ? (data.settings as SettingsRecord[]) : []
+  const exerciseNotes = Array.isArray(data.exerciseNotes)
+    ? (data.exerciseNotes as ExerciseNote[])
+    : []
+
+  // SEGURIDAD: antes de sobrescribir, descargar copia del estado actual
+  const prev = await buildBackup()
+  const dateStr = format(new Date(), 'yyyy-MM-dd')
+  downloadBlob(
+    `replog-backup-previo-${dateStr}.json`,
+    'application/json',
+    JSON.stringify(prev, null, 2)
+  )
+
+  // Preservar seedVersion para no re-sembrar el catálogo al recargar
+  const currentSettings = await db.settings.toArray()
+  const currentAppSetting = currentSettings.find((s): s is Settings => s.id === 'app')
+  const currentSeedVersion = Math.max(currentAppSetting?.seedVersion ?? 3, 3)
+
+  const finalSettings: SettingsRecord[] = [...settings]
+  const hasSeedVersion = finalSettings.some(
+    (s) =>
+      'seedVersion' in s &&
+      typeof (s as Settings).seedVersion === 'number' &&
+      ((s as Settings).seedVersion ?? 0) >= 3
+  )
+
+  if (!hasSeedVersion) {
+    const appIdx = finalSettings.findIndex((s) => s.id === 'app')
+    if (appIdx >= 0) {
+      const existingApp = finalSettings[appIdx] as Settings
+      finalSettings[appIdx] = {
+        ...existingApp,
+        seedVersion: currentSeedVersion,
+      }
+    } else {
+      finalSettings.push({
+        id: 'app',
+        units: 'kg',
+        restSeconds: 120,
+        createdAt: Date.now(),
+        seedVersion: currentSeedVersion,
+      })
+    }
+  }
+
+  // Transacción atómica Dexie rw sobre las 7 tablas de datos (sin tocar syncMeta)
+  await db.transaction(
+    'rw',
+    [
+      db.exercises,
+      db.folders,
+      db.routines,
+      db.workouts,
+      db.measurements,
+      db.settings,
+      db.exerciseNotes,
+    ],
+    async () => {
+      await db.exercises.clear()
+      if (exercises.length > 0) {
+        await db.exercises.bulkPut(exercises)
+      }
+
+      await db.folders.clear()
+      if (folders.length > 0) {
+        await db.folders.bulkPut(folders)
+      }
+
+      await db.routines.clear()
+      if (routines.length > 0) {
+        await db.routines.bulkPut(routines)
+      }
+
+      await db.workouts.clear()
+      if (workouts.length > 0) {
+        await db.workouts.bulkPut(workouts)
+      }
+
+      await db.measurements.clear()
+      if (measurements.length > 0) {
+        await db.measurements.bulkPut(measurements)
+      }
+
+      await db.settings.clear()
+      if (finalSettings.length > 0) {
+        await db.settings.bulkPut(finalSettings)
+      }
+
+      await db.exerciseNotes.clear()
+      if (exerciseNotes.length > 0) {
+        await db.exerciseNotes.bulkPut(exerciseNotes)
+      }
+    }
+  )
+
+  return {
+    counts: {
+      exercises: exercises.length,
+      folders: folders.length,
+      routines: routines.length,
+      workouts: workouts.length,
+      measurements: measurements.length,
+      settings: finalSettings.length,
+      exerciseNotes: exerciseNotes.length,
     },
   }
 }
@@ -48,6 +201,9 @@ export async function buildBackup(): Promise<RepLogBackup> {
  * Crea un Blob y dispara la descarga en el navegador con fallback para entornos WebView.
  */
 export function downloadBlob(filename: string, mime: string, content: string): void {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return
+  }
   const blob = new Blob([content], { type: mime })
   const url = URL.createObjectURL(blob)
 
