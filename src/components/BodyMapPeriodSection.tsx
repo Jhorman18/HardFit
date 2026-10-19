@@ -11,6 +11,7 @@ import { es } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Activity } from 'lucide-react'
 import type { Workout, Exercise } from '../types'
 import { musclesWorkedInPeriod, setsByMuscleGroup } from '../utils/stats'
+import { useMuscleOverridesMap } from '../utils/effectiveMuscles'
 import { BodyMuscleChart } from './BodyMuscleChart'
 
 export interface BodyMapPeriodSectionProps {
@@ -55,6 +56,8 @@ export function BodyMapPeriodSection({
     [today, currentDate]
   )
 
+  const overridesMap = useMuscleOverridesMap()
+
   // Músculos trabajados por MuscleKey para heatmap anatómico
   const muscleCounts = useMemo(() => {
     return musclesWorkedInPeriod(
@@ -62,9 +65,10 @@ export function BodyMapPeriodSection({
       exercisesById,
       undefined,
       weekStart.getTime(),
-      weekEnd.getTime()
+      weekEnd.getTime(),
+      overridesMap
     )
-  }, [workouts, exercisesById, weekStart, weekEnd])
+  }, [workouts, exercisesById, weekStart, weekEnd, overridesMap])
 
   // Desglose de series por grupo muscular para la tabla inferior
   const muscleGroupSets = useMemo(() => {
@@ -72,9 +76,10 @@ export function BodyMapPeriodSection({
       workouts,
       exercisesById,
       weekStart.getTime(),
-      weekEnd.getTime()
+      weekEnd.getTime(),
+      overridesMap
     )
-  }, [workouts, exercisesById, weekStart, weekEnd])
+  }, [workouts, exercisesById, weekStart, weekEnd, overridesMap])
 
   const sortedMuscleGroups = useMemo(() => {
     return Object.entries(muscleGroupSets).sort((a, b) => b[1] - a[1])

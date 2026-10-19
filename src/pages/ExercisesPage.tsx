@@ -7,7 +7,9 @@ import { BodyMuscleChart } from '../components/BodyMuscleChart'
 import { ExerciseFormModal } from '../components/ExerciseFormModal'
 import { ExerciseHistoryTab } from '../components/ExerciseHistoryTab'
 import { ExerciseNotesTab } from '../components/ExerciseNotesTab'
+import { MuscleToggleList } from '../components/MuscleToggleList'
 import { exerciseMedia } from '../data/exerciseMedia'
+import { getEffectiveMedia } from '../utils/effectiveMuscles'
 import type { Exercise, ExerciseType } from '../types'
 
 type DetailTab = 'resumen' | 'historial' | 'notas'
@@ -137,7 +139,16 @@ export function ExercisesPage() {
     }
   }
 
-  const selectedMedia = selectedExercise ? exerciseMedia[selectedExercise.id] : undefined
+  const selectedOverride = useLiveQuery(
+    () => (selectedExercise ? db.muscleOverrides.get(selectedExercise.id) : undefined),
+    [selectedExercise?.id]
+  )
+
+  const hasBaseMedia = Boolean(selectedExercise && exerciseMedia[selectedExercise.id])
+  const effectiveMedia = useMemo(() => {
+    if (!selectedExercise) return undefined
+    return getEffectiveMedia(selectedExercise.id, selectedOverride)
+  }, [selectedExercise, selectedOverride])
 
   return (
     <div className="p-4 space-y-4">
@@ -391,18 +402,20 @@ export function ExercisesPage() {
                 </div>
 
                 {/* Mapa muscular anatómico */}
-                {selectedMedia ? (
+                {hasBaseMedia && effectiveMedia ? (
                   <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 space-y-3">
                     <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
                       <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
                         Mapa Muscular
                       </span>
                       <div className="flex items-center gap-3 text-[10px]">
-                        <span className="flex items-center gap-1.5 text-neutral-300">
-                          <span className="w-2 h-2 rounded-full bg-[#dc2626] inline-block" />
-                          Primario
-                        </span>
-                        {selectedMedia.secondary.length > 0 && (
+                        {effectiveMedia.primary.length > 0 && (
+                          <span className="flex items-center gap-1.5 text-neutral-300">
+                            <span className="w-2 h-2 rounded-full bg-[#dc2626] inline-block" />
+                            Primario
+                          </span>
+                        )}
+                        {effectiveMedia.secondary.length > 0 && (
                           <span className="flex items-center gap-1.5 text-neutral-400">
                             <span className="w-2 h-2 rounded-full bg-[#f97316] inline-block" />
                             Secundario
@@ -412,25 +425,29 @@ export function ExercisesPage() {
                     </div>
 
                     <BodyMuscleChart
-                      primary={selectedMedia.primary}
-                      secondary={selectedMedia.secondary}
+                      primary={effectiveMedia.primary}
+                      secondary={effectiveMedia.secondary}
                       size="lg"
                     />
 
                     <div className="space-y-1 pt-1 text-xs border-t border-neutral-800/60">
-                      {selectedMedia.primaryEs.length > 0 && (
+                      {effectiveMedia.primaryEs.length > 0 ? (
                         <div className="leading-snug">
                           <span className="font-semibold text-white">Músculos: </span>
                           <span className="text-neutral-200">
-                            {selectedMedia.primaryEs.join(', ')}
+                            {effectiveMedia.primaryEs.join(', ')}
                           </span>
                         </div>
+                      ) : (
+                        <div className="leading-snug text-neutral-500">
+                          Sin músculos primarios activos
+                        </div>
                       )}
-                      {selectedMedia.secondaryEs.length > 0 && (
+                      {effectiveMedia.secondaryEs.length > 0 && (
                         <div className="leading-snug text-neutral-400">
                           <span className="font-medium text-neutral-400">Secundarios: </span>
                           <span className="text-neutral-400">
-                            {selectedMedia.secondaryEs.join(', ')}
+                            {effectiveMedia.secondaryEs.join(', ')}
                           </span>
                         </div>
                       )}
@@ -441,6 +458,9 @@ export function ExercisesPage() {
                     <span className="text-xs text-neutral-500">Sin datos de músculos</span>
                   </div>
                 )}
+
+                {/* Ajuste interactivo de músculos trabajados */}
+                <MuscleToggleList exerciseId={selectedExercise.id} />
 
                 {/* Instrucciones de técnica */}
                 {selectedExercise && instructionsMap && instructionsMap[selectedExercise.id]?.length > 0 && (

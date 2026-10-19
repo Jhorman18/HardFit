@@ -1,3 +1,5 @@
+import type { MuscleKey } from './data/exerciseMedia'
+
 export type ExerciseType =
   | 'weight_reps'
   | 'bodyweight_reps'
@@ -125,4 +127,9 @@ export interface ExerciseNote {
   exerciseId: string
   text: string
   updatedAt: number
+}
+
+export interface MuscleOverride {
+  exerciseId: string
+  disabled: MuscleKey[]
 }

@@ -1,7 +1,8 @@
 import { startOfMonth, endOfMonth } from 'date-fns'
-import type { Exercise, Workout } from '../types'
+import type { Exercise, Workout, MuscleOverride } from '../types'
 import { isValidSet, workoutVolume, countValidSets } from './stats'
 import { exerciseMedia, type ExerciseMediaItem, type MuscleKey } from '../data/exerciseMedia'
+import { getEffectiveMedia } from './effectiveMuscles'
 
 /**
  * Obtiene un ejercicio a partir de un Map o Record de ejercicios.
@@ -106,7 +107,9 @@ export function setsByMuscleGroup(
   workouts: Workout[],
   exercisesById?: Map<string, Exercise> | Record<string, Exercise>,
   fromTs?: number,
-  toTs?: number
+  toTs?: number,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _overrides?: Map<string, MuscleOverride>
 ): Record<string, number> {
   const filtered = workouts.filter((w) => isWorkoutInRange(w, fromTs, toTs))
   const result: Record<string, number> = {}
@@ -163,13 +166,15 @@ export const FALLBACK_MUSCLE_GROUP_TO_KEYS: Record<string, MuscleKey[]> = {
 /**
  * Suma de series válidas que tocan cada músculo (usando primary+secondary de exerciseMedia[id];
  * si no está en exerciseMedia, usa el muscleGroup mapeado a MuscleKey aproximadas).
+ * Aplica overrides si están disponibles para excluir músculos desactivados por el usuario.
  */
 export function musclesWorkedInPeriod(
   workouts: Workout[],
   exercisesById?: Map<string, Exercise> | Record<string, Exercise>,
   exerciseMediaMap: Record<string, ExerciseMediaItem> = exerciseMedia,
   fromTs?: number,
-  toTs?: number
+  toTs?: number,
+  overrides?: Map<string, MuscleOverride>
 ): Record<MuscleKey, number> {
   const filtered = workouts.filter((w) => isWorkoutInRange(w, fromTs, toTs))
   const result = {} as Record<MuscleKey, number>
@@ -184,11 +189,14 @@ export function musclesWorkedInPeriod(
       }
       if (validSetsCount === 0) continue
 
-      const media = exerciseMediaMap ? exerciseMediaMap[entry.exerciseId] : undefined
+      const baseMedia =
+        (exerciseMediaMap && exerciseMediaMap[entry.exerciseId]) ||
+        exerciseMedia[entry.exerciseId]
       let keys: MuscleKey[] = []
 
-      if (media && (media.primary.length > 0 || media.secondary.length > 0)) {
-        keys = Array.from(new Set([...media.primary, ...media.secondary]))
+      if (baseMedia) {
+        const eff = getEffectiveMedia(entry.exerciseId, overrides, exerciseMediaMap)
+        keys = Array.from(new Set([...eff.primary, ...eff.secondary]))
       } else {
         const ex = getExercise(entry.exerciseId, exercisesById)
         const mg = ex?.muscleGroup || ''
@@ -205,6 +213,36 @@ export function musclesWorkedInPeriod(
 }
 
 export type RadarAxis = 'Espalda' | 'Pecho' | 'Core' | 'Hombros' | 'Brazos' | 'Piernas'
+
+export function mapMuscleKeyToRadarAxis(key: MuscleKey): RadarAxis | null {
+  switch (key) {
+    case 'chest':
+      return 'Pecho'
+    case 'upper-back':
+    case 'lower-back':
+    case 'trapezius':
+      return 'Espalda'
+    case 'abs':
+    case 'obliques':
+      return 'Core'
+    case 'front-deltoids':
+    case 'back-deltoids':
+      return 'Hombros'
+    case 'biceps':
+    case 'triceps':
+    case 'forearm':
+      return 'Brazos'
+    case 'quadriceps':
+    case 'hamstring':
+    case 'calves':
+    case 'gluteal':
+    case 'adductor':
+    case 'abductors':
+      return 'Piernas'
+    default:
+      return null
+  }
+}
 
 export function mapMuscleGroupToRadarAxis(muscleGroup?: string): RadarAxis | null {
   if (!muscleGroup) return null
@@ -237,12 +275,14 @@ export interface RadarRegionData {
 
 /**
  * Series válidas por eje del radar: Espalda, Pecho, Core, Hombros, Brazos, Piernas.
+ * Usa los músculos efectivos si el ejercicio cuenta con media en catálogo, o el muscleGroup como fallback.
  */
 export function radarByRegion(
   workouts: Workout[],
   exercisesById?: Map<string, Exercise> | Record<string, Exercise>,
   fromTs?: number,
-  toTs?: number
+  toTs?: number,
+  overrides?: Map<string, MuscleOverride>
 ): RadarRegionData {
   const filtered = workouts.filter((w) => isWorkoutInRange(w, fromTs, toTs))
   const result: RadarRegionData = {
@@ -258,16 +298,31 @@ export function radarByRegion(
     if (!w.entries) continue
     for (const entry of w.entries) {
       if (!entry.sets) continue
-      const ex = getExercise(entry.exerciseId, exercisesById)
-      const axis = mapMuscleGroupToRadarAxis(ex?.muscleGroup)
-      if (!axis) continue
-
       let validCount = 0
       for (const s of entry.sets) {
         if (isValidSet(s)) validCount++
       }
+      if (validCount === 0) continue
 
-      result[axis] += validCount
+      const baseMedia = exerciseMedia[entry.exerciseId]
+      if (baseMedia) {
+        const eff = getEffectiveMedia(entry.exerciseId, overrides)
+        const keys = Array.from(new Set([...eff.primary, ...eff.secondary]))
+        const axes = new Set<RadarAxis>()
+        for (const k of keys) {
+          const ax = mapMuscleKeyToRadarAxis(k)
+          if (ax) axes.add(ax)
+        }
+        for (const ax of axes) {
+          result[ax] += validCount
+        }
+      } else {
+        const ex = getExercise(entry.exerciseId, exercisesById)
+        const axis = mapMuscleGroupToRadarAxis(ex?.muscleGroup)
+        if (axis) {
+          result[axis] += validCount
+        }
+      }
     }
   }
 

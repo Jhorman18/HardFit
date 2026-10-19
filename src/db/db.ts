@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Exercise, Folder, Routine, Workout, Measurement, SettingsRecord, SyncMetaItem, ExerciseNote } from '../types'
+import type { Exercise, Folder, Routine, Workout, Measurement, SettingsRecord, SyncMetaItem, ExerciseNote, MuscleOverride } from '../types'
 
 export class RepLogDatabase extends Dexie {
   exercises!: Table<Exercise, string>
@@ -10,6 +10,7 @@ export class RepLogDatabase extends Dexie {
   settings!: Table<SettingsRecord, string>
   syncMeta!: Table<SyncMetaItem, string>
   exerciseNotes!: Table<ExerciseNote, string>
+  muscleOverrides!: Table<MuscleOverride, string>
 
   constructor() {
     super('replog')
@@ -33,6 +34,14 @@ export class RepLogDatabase extends Dexie {
     this.version(3)
       .stores({
         exerciseNotes: 'exerciseId',
+      })
+      .upgrade(() => {
+        // Upgrade vacío: preserva todas las tablas y datos existentes
+      })
+
+    this.version(4)
+      .stores({
+        muscleOverrides: 'exerciseId',
       })
       .upgrade(() => {
         // Upgrade vacío: preserva todas las tablas y datos existentes

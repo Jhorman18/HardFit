@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { MuscleKey } from '../data/exerciseMedia'
 import {
   bodyFront,
@@ -8,6 +8,7 @@ import {
   resolveBodyPartColor,
   type BodyPart,
 } from '../data/bodyHighlighter'
+import { getMuscleNameEs } from '../utils/effectiveMuscles'
 
 export interface BodyMuscleChartProps {
   /**
@@ -34,6 +35,14 @@ export interface BodyMuscleChartProps {
    * Si debe mostrar las etiquetas "FRENTE" y "ESPALDA" sobre las dos vistas anatómicas.
    */
   showLabels?: boolean
+  /**
+   * Callback opcional invocado al hacer clic en un músculo.
+   */
+  onMuscleClick?: (slug: string) => void
+  /**
+   * Si debe mostrar el rótulo con el nombre en español del músculo tocado debajo de la figura.
+   */
+  showMuscleLabel?: boolean
   /**
    * Clases CSS opcionales para el contenedor raíz.
    */
@@ -69,8 +78,17 @@ export function BodyMuscleChart({
   size = 'lg',
   interactive = false,
   showLabels = true,
+  onMuscleClick,
+  showMuscleLabel = true,
   className = '',
 }: BodyMuscleChartProps) {
+  const [clickedSlug, setClickedSlug] = useState<string | null>(null)
+
+  const handleMuscleClick = (slug: string) => {
+    setClickedSlug(slug)
+    onMuscleClick?.(slug)
+  }
+
   // Calcular el valor máximo de series/intensidad para normalización del heatmap
   const maxIntensity = useMemo(() => {
     if (!intensities) return 0
@@ -146,6 +164,8 @@ export function BodyMuscleChart({
                       stroke="#171717"
                       strokeWidth="1.2"
                       vectorEffect="non-scaling-stroke"
+                      className="cursor-pointer transition-opacity hover:opacity-80"
+                      onClick={() => handleMuscleClick(part.slug)}
                     />
                   ))}
                 </g>
@@ -194,6 +214,8 @@ export function BodyMuscleChart({
                       stroke="#171717"
                       strokeWidth="1.2"
                       vectorEffect="non-scaling-stroke"
+                      className="cursor-pointer transition-opacity hover:opacity-80"
+                      onClick={() => handleMuscleClick(part.slug)}
                     />
                   ))}
                 </g>
@@ -202,6 +224,15 @@ export function BodyMuscleChart({
           </svg>
         </div>
       </div>
+
+      {showMuscleLabel && clickedSlug && (
+        <div className="mt-2 text-center animate-fadeIn">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-neutral-900 border border-neutral-800 text-neutral-200 shadow-sm">
+            <span className="text-neutral-400 font-normal">Músculo:</span>
+            {getMuscleNameEs(clickedSlug)}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

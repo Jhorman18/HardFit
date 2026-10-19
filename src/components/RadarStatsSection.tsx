@@ -18,6 +18,7 @@ import {
   setsByMuscleGroup,
   type RadarAxis,
 } from '../utils/stats'
+import { useMuscleOverridesMap } from '../utils/effectiveMuscles'
 
 export interface RadarStatsSectionProps {
   workouts: Workout[]
@@ -90,15 +91,17 @@ export function RadarStatsSection({
     }
   }, [period, now])
 
+  const overridesMap = useMuscleOverridesMap()
+
   // Datos para los 6 ejes del radar
   const radarActual = useMemo(
-    () => radarByRegion(workouts, exercisesById, actualFrom, actualTo),
-    [workouts, exercisesById, actualFrom, actualTo]
+    () => radarByRegion(workouts, exercisesById, actualFrom, actualTo, overridesMap),
+    [workouts, exercisesById, actualFrom, actualTo, overridesMap]
   )
 
   const radarAnterior = useMemo(
-    () => radarByRegion(workouts, exercisesById, anteriorFrom, anteriorTo),
-    [workouts, exercisesById, anteriorFrom, anteriorTo]
+    () => radarByRegion(workouts, exercisesById, anteriorFrom, anteriorTo, overridesMap),
+    [workouts, exercisesById, anteriorFrom, anteriorTo, overridesMap]
   )
 
   const radarData = useMemo(() => {
@@ -122,8 +125,8 @@ export function RadarStatsSection({
 
   // Desglose de series por grupo para el período actual
   const actualSetsByGroup = useMemo(
-    () => setsByMuscleGroup(workouts, exercisesById, actualFrom, actualTo),
-    [workouts, exercisesById, actualFrom, actualTo]
+    () => setsByMuscleGroup(workouts, exercisesById, actualFrom, actualTo, overridesMap),
+    [workouts, exercisesById, actualFrom, actualTo, overridesMap]
   )
 
   const sortedGroups = useMemo(() => {
