@@ -1,0 +1,19 @@
+# Normaliza finales de línea: el repo guarda LF, el working copy usa el del SO
+* text=auto eol=lf
+
+# Binarios (no tocar)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.apk binary
+*.jar binary
+*.keystore binary
+*.woff binary
+*.woff2 binary
+
+# Scripts que deben conservar LF siempre
+*.sh text eol=lf
+gradlew text eol=lf
