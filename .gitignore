@@ -36,3 +36,8 @@ dist-ssr
 
 # APK con credenciales horneadas: no publicar en repo publico
 RepLog.apk
+
+# Backups de datos del usuario (no publicar)
+import-entrenamiento.json
+*-backup-*.json
+replog-backup-*.json
