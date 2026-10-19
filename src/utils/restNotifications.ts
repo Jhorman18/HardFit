@@ -115,7 +115,7 @@ export async function startRestNotifications(targetEnd: number): Promise<void> {
           {
             id: ONGOING_ID,
             title: 'Descanso',
-            body: `Faltan ${formatTimeLeft(secondsRemaining)}`,
+            body: 'Descanso en curso',
             channelId: CHANNEL_REST_ONGOING,
             ongoing: true,
             autoCancel: false,
@@ -135,27 +135,11 @@ export async function startRestNotifications(targetEnd: number): Promise<void> {
  * En segundo plano el motor JS se congela, por lo que esta función solo actúa
  * de forma activa mientras la app está visible en primer plano.
  */
-export async function updateRestCountdown(secondsLeft: number): Promise<void> {
-  if (!Capacitor.isNativePlatform() || !permissionGranted) return
-  if (secondsLeft <= 0) return
-
-  try {
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id: ONGOING_ID,
-          title: 'Descanso',
-          body: `Faltan ${formatTimeLeft(secondsLeft)}`,
-          channelId: CHANNEL_REST_ONGOING,
-          ongoing: true,
-          autoCancel: false,
-          smallIcon: 'ic_stat_icon_config_sample',
-        },
-      ],
-    })
-  } catch (err) {
-    console.warn('Error al actualizar conteo de notificación de descanso:', err)
-  }
+export async function updateRestCountdown(_secondsLeft: number): Promise<void> {
+  // Intencionalmente NO-OP: la notificación "en curso" es FIJA (se publica una sola vez
+  // en startRestNotifications). Antes se re-emitía cada segundo para actualizar el conteo,
+  // lo que hacía que Android publicara una notificación por segundo (parpadeo). El conteo
+  // en vivo se ve en la barra dentro de la app; la alerta final sigue programada en el SO.
 }
 
 /**
