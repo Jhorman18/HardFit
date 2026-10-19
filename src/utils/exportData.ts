@@ -1,5 +1,6 @@
 import { format } from 'date-fns'
 import { db } from '../db'
+import { catalog } from '../data/catalog'
 import type {
   Exercise,
   Folder,
@@ -134,6 +135,8 @@ export async function importBackupFromText(
     }
   }
 
+  const hasCatalog = exercises.some((e) => !e.isCustom)
+
   // Transacción atómica Dexie rw sobre las 7 tablas de datos (sin tocar syncMeta)
   await db.transaction(
     'rw',
@@ -148,6 +151,13 @@ export async function importBackupFromText(
     ],
     async () => {
       await db.exercises.clear()
+      if (!hasCatalog) {
+        const catalogRecords: Exercise[] = catalog.map((ex) => ({
+          ...ex,
+          isCustom: false,
+        }))
+        await db.exercises.bulkPut(catalogRecords)
+      }
       if (exercises.length > 0) {
         await db.exercises.bulkPut(exercises)
       }
@@ -186,7 +196,7 @@ export async function importBackupFromText(
 
   return {
     counts: {
-      exercises: exercises.length,
+      exercises: hasCatalog ? exercises.length : exercises.length + catalog.length,
       folders: folders.length,
       routines: routines.length,
       workouts: workouts.length,
