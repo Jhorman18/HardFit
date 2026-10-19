@@ -23,7 +23,23 @@ export function BodyMapPeriodSection({
   exercisesById,
 }: BodyMapPeriodSectionProps) {
   const [today] = useState(() => new Date())
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date())
+  const [currentDate, setCurrentDate] = useState<Date>(() => {
+    const now = new Date()
+    if (!workouts || workouts.length === 0) return now
+    const startThisWeek = startOfWeek(now, { weekStartsOn: 1 }).getTime()
+    const endThisWeek = endOfWeek(now, { weekStartsOn: 1 }).getTime()
+    const hasWorkoutThisWeek = workouts.some((w) => {
+      const ts = w.finishedAt ?? w.startedAt
+      return ts >= startThisWeek && ts <= endThisWeek
+    })
+    if (hasWorkoutThisWeek) return now
+
+    const sorted = [...workouts].sort(
+      (a, b) => (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt)
+    )
+    const latest = sorted[0]
+    return latest ? new Date(latest.finishedAt ?? latest.startedAt) : now
+  })
 
   const weekStart = useMemo(
     () => startOfWeek(currentDate, { weekStartsOn: 1 }),

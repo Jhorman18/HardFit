@@ -135,6 +135,10 @@ export function setsByMuscleGroup(
 export const FALLBACK_MUSCLE_GROUP_TO_KEYS: Record<string, MuscleKey[]> = {
   Pecho: ['chest'],
   Espalda: ['upper-back', 'lower-back'],
+  'Espalda alta': ['upper-back', 'trapezius'],
+  'Espalda baja': ['lower-back'],
+  Dorsales: ['upper-back'],
+  Dorsal: ['upper-back'],
   Pierna: ['quadriceps', 'hamstring', 'calves', 'gluteal'],
   Piernas: ['quadriceps', 'hamstring', 'calves', 'gluteal'],
   Hombro: ['front-deltoids', 'back-deltoids'],
@@ -150,6 +154,7 @@ export const FALLBACK_MUSCLE_GROUP_TO_KEYS: Record<string, MuscleKey[]> = {
   Antebrazo: ['forearm'],
   Antebrazos: ['forearm'],
   Trapecio: ['trapezius'],
+  Trapecios: ['trapezius'],
   Cuello: ['neck'],
   Cardio: [],
   Otros: [],
@@ -205,7 +210,7 @@ export function mapMuscleGroupToRadarAxis(muscleGroup?: string): RadarAxis | nul
   if (!muscleGroup) return null
   const mg = muscleGroup.trim().toLowerCase()
   if (mg.includes('pecho')) return 'Pecho'
-  if (mg.includes('espalda')) return 'Espalda'
+  if (mg.includes('espalda') || mg.includes('dorsal') || mg.includes('trapecio')) return 'Espalda'
   if (mg.includes('core') || mg.includes('abdominal')) return 'Core'
   if (mg.includes('hombro')) return 'Hombros'
   if (
