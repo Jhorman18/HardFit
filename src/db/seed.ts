@@ -5,7 +5,22 @@ import type { Exercise, Settings } from '../types'
 export async function seedIfEmpty(): Promise<void> {
   // A single rw transaction serializes concurrent calls (e.g. React StrictMode's
   // double effect invocation in dev), so the second run sees the rows the first wrote.
-  await db.transaction('rw', db.exercises, db.settings, async () => {
+  await db.transaction('rw', db.exercises, db.settings, db.workouts, db.measurements, async () => {
+    // Purga segura e idempotente de datos demo previos (prefijo 'demo-')
+    const demoWorkoutIds = (await db.workouts.toArray())
+      .filter((w) => w.id.startsWith('demo-'))
+      .map((w) => w.id)
+    if (demoWorkoutIds.length > 0) {
+      await db.workouts.bulkDelete(demoWorkoutIds)
+    }
+
+    const demoMeasurementIds = (await db.measurements.toArray())
+      .filter((m) => m.id.startsWith('demo-'))
+      .map((m) => m.id)
+    if (demoMeasurementIds.length > 0) {
+      await db.measurements.bulkDelete(demoMeasurementIds)
+    }
+
     let appSettings = (await db.settings.get('app')) as Settings | undefined
     if (!appSettings) {
       appSettings = {

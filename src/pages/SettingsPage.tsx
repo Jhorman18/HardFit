@@ -13,10 +13,7 @@ import {
   User as UserIcon,
   Mail,
   Lock,
-  FlaskConical,
-  Trash2,
 } from 'lucide-react'
-import { generateDemoData, clearDemoData } from '../utils/demoData'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { db } from '../db'
@@ -52,35 +49,6 @@ export function SettingsPage() {
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [actionType, setActionType] = useState<'signin' | 'signup' | null>(null)
-
-  const [demoBusy, setDemoBusy] = useState(false)
-  const [demoMsg, setDemoMsg] = useState<string | null>(null)
-
-  const handleGenerateDemo = async () => {
-    setDemoBusy(true)
-    setDemoMsg(null)
-    try {
-      const res = await generateDemoData()
-      setDemoMsg(`Generados ${res.workouts} entrenos y ${res.measurements} medidas. Mira Estadísticas y Medidas.`)
-    } catch {
-      setDemoMsg('No se pudieron generar los datos de prueba.')
-    } finally {
-      setDemoBusy(false)
-    }
-  }
-
-  const handleClearDemo = async () => {
-    setDemoBusy(true)
-    setDemoMsg(null)
-    try {
-      await clearDemoData()
-      setDemoMsg('Datos de prueba eliminados.')
-    } catch {
-      setDemoMsg('No se pudieron borrar los datos de prueba.')
-    } finally {
-      setDemoBusy(false)
-    }
-  }
 
   const settings = useLiveQuery(async () => {
     const s = await db.settings.get('app')
@@ -589,47 +557,6 @@ export function SettingsPage() {
         <div className="text-[11px] text-neutral-400 bg-neutral-950 p-2.5 rounded-lg border border-neutral-800">
           Nota: Los archivos se descargan directamente en tu navegador o almacenamiento local.
         </div>
-      </div>
-
-      {/* Datos de prueba (para probar gráficas) */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-3">
-        <div>
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <FlaskConical size={16} />
-            Datos de prueba
-          </h2>
-          <p className="text-xs text-neutral-400 mt-0.5">
-            Genera ~1 mes de entrenos y medidas de ejemplo para ver las gráficas de Estadísticas y
-            Medidas. No afecta tus datos reales y puedes borrarlos cuando quieras.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          <button
-            type="button"
-            disabled={demoBusy}
-            onClick={handleGenerateDemo}
-            className="py-2.5 rounded-xl text-xs font-bold bg-white hover:bg-neutral-200 text-black transition flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <FlaskConical size={14} />
-            {demoBusy ? 'Generando…' : 'Cargar datos de prueba'}
-          </button>
-          <button
-            type="button"
-            disabled={demoBusy}
-            onClick={handleClearDemo}
-            className="py-2.5 rounded-xl text-xs font-semibold bg-neutral-950 border border-neutral-800 text-red-400 hover:bg-neutral-800/60 transition flex items-center justify-center gap-1.5 disabled:opacity-50"
-          >
-            <Trash2 size={14} />
-            Borrar prueba
-          </button>
-        </div>
-
-        {demoMsg && (
-          <div className="text-[11px] text-neutral-300 bg-neutral-950 p-2.5 rounded-lg border border-neutral-800">
-            {demoMsg}
-          </div>
-        )}
       </div>
 
       {/* Acerca de RepLog */}
