@@ -99,6 +99,12 @@ export interface Settings {
   showRpe?: boolean
   createdAt: number
   seedVersion?: number
+  sex?: 'male' | 'female'
+  age?: number
+  heightCm?: number
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
+  healthOnboarded?: boolean
+  enableHealthMetrics?: boolean
 }
 
 export interface ActiveWorkoutRecord {

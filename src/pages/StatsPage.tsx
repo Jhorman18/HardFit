@@ -6,6 +6,7 @@ import { BodyMapPeriodSection } from '../components/BodyMapPeriodSection'
 import { RadarStatsSection } from '../components/RadarStatsSection'
 import { MonthlyReportSection } from '../components/MonthlyReportSection'
 import { SearchableSelect } from '../components/SearchableSelect'
+import { HealthMetricsSection } from '../components/HealthMetricsSection'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -290,6 +291,12 @@ export function StatsPage() {
           <div className="text-[10px] text-neutral-500 mt-1">Lunes a domingo actual</div>
         </div>
       </div>
+
+      {/* MÉTRICAS DE SALUD (IMC, TMB, TDEE) */}
+      <HealthMetricsSection
+        settings={settings && 'units' in settings ? settings : undefined}
+        latestBodyweight={latestBodyweight}
+      />
 
       {/* ESTADO VACÍO SI NO HAY ENTRENOS */}
       {!hasAnyData && (

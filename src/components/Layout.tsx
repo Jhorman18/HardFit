@@ -1,4 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom'
+import { useLiveQuery } from 'dexie-react-hooks'
 import {
   Home,
   Dumbbell,
@@ -9,6 +10,8 @@ import {
   Settings,
 } from 'lucide-react'
 import { RestTimerBar } from './RestTimerBar'
+import { HealthOnboardingModal } from './HealthOnboardingModal'
+import { db } from '../db'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Inicio', Icon: Home },
@@ -21,6 +24,13 @@ const NAV_ITEMS = [
 ]
 
 export function Layout() {
+  const settings = useLiveQuery(async () => {
+    const s = await db.settings.get('app')
+    return s && 'units' in s ? s : undefined
+  }, [])
+
+  const showHealthOnboarding = settings !== undefined && settings.healthOnboarded !== true
+
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center">
       {/* Marco contenedor móvil centrado */}
@@ -50,6 +60,9 @@ export function Layout() {
 
         {/* Temporizador de descanso flotante */}
         <RestTimerBar />
+
+        {/* Modal de bienvenida / perfil de salud si aún no se ha completado */}
+        {showHealthOnboarding && <HealthOnboardingModal settings={settings} />}
 
         {/* Barra de navegación inferior fija estilo app móvil */}
         <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">

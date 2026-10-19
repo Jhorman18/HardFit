@@ -13,8 +13,12 @@ import {
   User as UserIcon,
   Mail,
   Lock,
+  HeartPulse,
+  Activity,
+  Check,
+  Plus,
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { db } from '../db'
 import {
@@ -23,6 +27,11 @@ import {
   exportMeasurementsCsv,
   importBackupFromText,
 } from '../utils/exportData'
+import {
+  ACTIVITY_LEVELS,
+  type ActivityLevel,
+  patchAppSettings,
+} from '../utils/healthMetrics'
 import { useAuthStore } from '../store'
 import { useSyncStore } from '../sync'
 import type { Settings } from '../types'
@@ -57,25 +66,45 @@ export function SettingsPage() {
   const currentUnits = settings?.units ?? 'kg'
   const currentRestSeconds = settings?.restSeconds ?? 120
   const currentShowRpe = settings?.showRpe ?? false
+  const currentEnableHealthMetrics = settings?.enableHealthMetrics !== false
+
+  const [newWeight, setNewWeight] = useState<string>('')
+  const [weightStatus, setWeightStatus] = useState<string | null>(null)
+
+  const latestWeightMeasurement = useLiveQuery(async () => {
+    const list = await db.measurements
+      .filter((m) => m.type === 'bodyweight')
+      .sortBy('date')
+    return list.length > 0 ? list[list.length - 1] : null
+  }, [])
 
   // Guarda preservando los demás campos existentes.
   const patchSettings = async (patch: Partial<Omit<Settings, 'id'>>) => {
-    const existing = await db.settings.get('app')
-    const existingSettings = existing && 'units' in existing ? existing : undefined
-    await db.settings.put({
-      id: 'app',
-      units: existingSettings?.units ?? 'kg',
-      restSeconds: existingSettings?.restSeconds ?? 120,
-      showRpe: existingSettings?.showRpe ?? false,
-      createdAt: existingSettings?.createdAt ?? 0,
-      seedVersion: existingSettings?.seedVersion,
-      ...patch,
-    })
+    await patchAppSettings(patch)
   }
 
   const handleUnitChange = (unit: 'kg' | 'lb') => patchSettings({ units: unit })
   const handleRestSecondsChange = (seconds: number) => patchSettings({ restSeconds: seconds })
   const handleShowRpeChange = (show: boolean) => patchSettings({ showRpe: show })
+  const handleEnableHealthMetricsChange = (enabled: boolean) =>
+    patchSettings({ enableHealthMetrics: enabled })
+
+  const handleSaveWeight = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const parsedWeight = newWeight.trim() ? parseFloat(newWeight.trim()) : NaN
+    if (Number.isNaN(parsedWeight) || parsedWeight <= 0) return
+
+    await db.measurements.add({
+      id: `meas-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      date: Date.now(),
+      type: 'bodyweight',
+      value: parsedWeight,
+      unit: currentUnits,
+    })
+    setNewWeight('')
+    setWeightStatus(`Peso registrado: ${parsedWeight} ${currentUnits}.`)
+    setTimeout(() => setWeightStatus(null), 3000)
+  }
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -435,6 +464,105 @@ export function SettingsPage() {
         </div>
       </div>
 
+      {/* Perfil y Métricas de Salud */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4">
+        {/* Switch para activar / desactivar métricas */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <HeartPulse size={16} />
+              Métricas de Salud
+            </h2>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Habilita el cálculo y visualización de IMC, Tasa Metabólica Basal (TMB) y Gasto Diario (TDEE). Puedes desactivarlo si no deseas ver métricas.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            role="switch"
+            aria-checked={currentEnableHealthMetrics}
+            onClick={() => handleEnableHealthMetricsChange(!currentEnableHealthMetrics)}
+            className={`relative shrink-0 w-12 h-7 rounded-full border transition ${
+              currentEnableHealthMetrics ? 'bg-white border-white' : 'bg-neutral-800 border-neutral-700'
+            }`}
+            aria-label="Activar o desactivar métricas de salud"
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${
+                currentEnableHealthMetrics ? 'translate-x-5 bg-black' : 'translate-x-0 bg-neutral-400'
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="text-[11px] text-neutral-400 bg-neutral-950 p-2.5 rounded-lg border border-neutral-800">
+          Estado:{' '}
+          <strong className="text-white">
+            {currentEnableHealthMetrics ? 'Activas (visibles en Progreso)' : 'Desactivadas (ocultas)'}
+          </strong>
+        </div>
+
+        {/* Formulario de perfil */}
+        <HealthProfileForm
+          key={`${settings?.sex}-${settings?.age}-${settings?.heightCm}-${settings?.activityLevel}`}
+          settings={settings}
+          patchSettings={patchSettings}
+        />
+
+        {/* Registro de peso actual */}
+        <div className="space-y-2.5 pt-2 border-t border-neutral-800/80">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-white flex items-center gap-1.5">
+              <Scale size={14} />
+              Peso corporal actual
+            </span>
+            {latestWeightMeasurement && (
+              <span className="text-[11px] text-neutral-400">
+                Último:{' '}
+                <strong className="text-white">
+                  {latestWeightMeasurement.value} {latestWeightMeasurement.unit}
+                </strong>{' '}
+                ({format(new Date(latestWeightMeasurement.date), 'dd MMM yyyy', { locale: es })})
+              </span>
+            )}
+          </div>
+
+          <form onSubmit={handleSaveWeight} className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="number"
+                step="0.1"
+                min="20"
+                max="400"
+                value={newWeight}
+                onChange={(e) => setNewWeight(e.target.value)}
+                placeholder="Nuevo peso..."
+                className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition pr-10"
+              />
+              <span className="absolute right-3 top-2 text-[10px] text-neutral-500 font-bold uppercase">
+                {currentUnits}
+              </span>
+            </div>
+            <button
+              type="submit"
+              disabled={!newWeight.trim()}
+              className="py-1.5 px-3 bg-white hover:bg-neutral-200 disabled:opacity-40 text-black font-bold rounded-xl text-xs transition shrink-0 flex items-center gap-1"
+            >
+              <Plus size={14} />
+              <span>Registrar</span>
+            </button>
+          </form>
+
+          {weightStatus && (
+            <div className="text-xs p-2 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 flex items-center gap-1.5">
+              <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+              <span>{weightStatus}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Datos y copia de seguridad */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4">
         <div>
@@ -582,5 +710,158 @@ export function SettingsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+interface HealthProfileFormProps {
+  settings?: Settings
+  patchSettings: (patch: Partial<Omit<Settings, 'id'>>) => Promise<void>
+}
+
+function HealthProfileForm({ settings, patchSettings }: HealthProfileFormProps) {
+  const [profileSex, setProfileSex] = useState<'male' | 'female' | null>(() => settings?.sex ?? null)
+  const [profileAge, setProfileAge] = useState<string>(() => (settings?.age ? String(settings.age) : ''))
+  const [profileHeight, setProfileHeight] = useState<string>(() =>
+    settings?.heightCm ? String(settings.heightCm) : ''
+  )
+  const [profileActivity, setProfileActivity] = useState<ActivityLevel | ''>(() => settings?.activityLevel ?? '')
+  const [profileStatus, setProfileStatus] = useState<string | null>(null)
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const patch: Partial<Omit<Settings, 'id'>> = {}
+    patch.sex = profileSex ?? undefined
+    const parsedAge = profileAge.trim() ? parseInt(profileAge.trim(), 10) : NaN
+    patch.age = !Number.isNaN(parsedAge) && parsedAge > 0 ? parsedAge : undefined
+    const parsedHeight = profileHeight.trim() ? parseFloat(profileHeight.trim()) : NaN
+    patch.heightCm = !Number.isNaN(parsedHeight) && parsedHeight > 0 ? parsedHeight : undefined
+    patch.activityLevel = profileActivity || undefined
+    patch.healthOnboarded = true
+
+    await patchSettings(patch)
+    setProfileStatus('Perfil de salud guardado.')
+    setTimeout(() => setProfileStatus(null), 3000)
+  }
+
+  return (
+    <form onSubmit={handleSaveProfile} className="space-y-3 pt-1 border-t border-neutral-800/80">
+      <div className="text-xs font-semibold text-white flex items-center gap-1.5 pt-1">
+        <Activity size={14} className="text-white" />
+        <span>Datos de perfil (opcionales)</span>
+      </div>
+
+      {/* Sexo */}
+      <div>
+        <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1">
+          Sexo biológico
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setProfileSex(profileSex === 'male' ? null : 'male')}
+            className={`py-1.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              profileSex === 'male'
+                ? 'bg-white text-black border-white'
+                : 'bg-neutral-950 text-neutral-300 border-neutral-800 hover:bg-neutral-800'
+            }`}
+          >
+            {profileSex === 'male' && <Check size={14} />}
+            Hombre
+          </button>
+          <button
+            type="button"
+            onClick={() => setProfileSex(profileSex === 'female' ? null : 'female')}
+            className={`py-1.5 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              profileSex === 'female'
+                ? 'bg-white text-black border-white'
+                : 'bg-neutral-950 text-neutral-300 border-neutral-800 hover:bg-neutral-800'
+            }`}
+          >
+            {profileSex === 'female' && <Check size={14} />}
+            Mujer
+          </button>
+        </div>
+      </div>
+
+      {/* Edad y Estatura */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <div>
+          <label
+            htmlFor="settings-age-input"
+            className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1"
+          >
+            Edad (años)
+          </label>
+          <input
+            id="settings-age-input"
+            type="number"
+            min="10"
+            max="120"
+            value={profileAge}
+            onChange={(e) => setProfileAge(e.target.value)}
+            placeholder="ej. 25"
+            className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="settings-height-input"
+            className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1"
+          >
+            Estatura (cm)
+          </label>
+          <input
+            id="settings-height-input"
+            type="number"
+            min="80"
+            max="260"
+            value={profileHeight}
+            onChange={(e) => setProfileHeight(e.target.value)}
+            placeholder="ej. 175"
+            className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-neutral-600 focus:outline-none focus:border-neutral-500 transition"
+          />
+        </div>
+      </div>
+
+      {/* Nivel de actividad */}
+      <div>
+        <label
+          htmlFor="settings-activity-select"
+          className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider mb-1"
+        >
+          Nivel de actividad
+        </label>
+        <select
+          id="settings-activity-select"
+          value={profileActivity}
+          onChange={(e) => setProfileActivity(e.target.value as ActivityLevel | '')}
+          className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-neutral-500 transition"
+        >
+          <option value="" className="bg-neutral-900 text-neutral-400">
+            Seleccionar nivel (opcional)...
+          </option>
+          {ACTIVITY_LEVELS.map((item) => (
+            <option key={item.value} value={item.value} className="bg-neutral-900 text-white">
+              {item.label} — {item.description}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {profileStatus && (
+        <div className="text-xs p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 flex items-center gap-1.5">
+          <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
+          <span>{profileStatus}</span>
+        </div>
+      )}
+
+      <button
+        type="submit"
+        className="w-full py-2 px-3 bg-neutral-800 hover:bg-neutral-700 text-white font-semibold rounded-xl text-xs transition border border-neutral-700 flex items-center justify-center gap-1.5"
+      >
+        Guardar perfil
+      </button>
+    </form>
   )
 }
