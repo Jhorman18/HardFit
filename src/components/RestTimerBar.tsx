@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { Timer } from 'lucide-react'
 import { useWorkoutStore } from '../store'
 import { notifyTimerFinished } from '../utils/sound'
+import { updateRestCountdown } from '../utils/restNotifications'
 
 function formatSeconds(seconds: number): string {
   const m = Math.floor(seconds / 60)
@@ -20,20 +21,28 @@ export function RestTimerBar() {
     return Math.max(0, Math.ceil((timer.targetEnd - Date.now()) / 1000))
   })
   const hasAlertedRef = useRef(false)
+  const lastSecondsRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!restTimer) {
       hasAlertedRef.current = false
+      lastSecondsRef.current = null
       return
     }
 
     hasAlertedRef.current = false
+    lastSecondsRef.current = null
 
     const updateTimer = () => {
       const now = Date.now()
       const diff = restTimer.targetEnd - now
       const remaining = Math.max(0, Math.ceil(diff / 1000))
       setTimeLeft(remaining)
+
+      if (remaining > 0 && lastSecondsRef.current !== remaining) {
+        lastSecondsRef.current = remaining
+        updateRestCountdown(remaining).catch(() => {})
+      }
 
       if (remaining <= 0) {
         if (!hasAlertedRef.current) {

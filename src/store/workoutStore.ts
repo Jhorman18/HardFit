@@ -2,6 +2,11 @@ import { create } from 'zustand'
 import { db } from '../db'
 import { syncNow } from '../sync'
 import type { Workout, WorkoutEntry, WorkoutSetEntry, Routine, ActiveWorkoutRecord } from '../types'
+import {
+  initRestNotifications,
+  startRestNotifications,
+  cancelRestNotifications,
+} from '../utils/restNotifications'
 
 export interface RestTimerState {
   targetEnd: number
@@ -90,6 +95,8 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
   restTimer: null,
 
   startEmptyWorkout: (name?: string) => {
+    initRestNotifications().catch(() => {})
+    cancelRestNotifications().catch(() => {})
     const newWorkout: Workout = {
       id: generateId(),
       name: name && name.trim() ? name.trim() : 'Entrenamiento libre',
@@ -99,12 +106,14 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
       notes: '',
       entries: [],
     }
-    set({ activeWorkout: newWorkout })
+    set({ activeWorkout: newWorkout, restTimer: null })
     persistActiveWorkout(newWorkout)
   },
 
   startWorkout: (routine?: Routine) => {
     if (routine) {
+      initRestNotifications().catch(() => {})
+      cancelRestNotifications().catch(() => {})
       const sortedItems = [...routine.items].sort((a, b) => a.order - b.order)
       const newWorkout: Workout = {
         id: generateId(),
@@ -143,6 +152,8 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
     }
 
     try {
+      initRestNotifications().catch(() => {})
+      cancelRestNotifications().catch(() => {})
       const routine = await db.routines.get(routineId)
       if (!routine) {
         console.warn('Rutina no encontrada en la base de datos:', routineId)
@@ -222,11 +233,13 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
   },
 
   discardWorkout: async () => {
+    cancelRestNotifications().catch(() => {})
     set({ activeWorkout: null, restTimer: null })
     await persistActiveWorkout(null)
   },
 
   finishWorkout: async () => {
+    cancelRestNotifications().catch(() => {})
     const { activeWorkout } = get()
     if (!activeWorkout) return null
 
@@ -462,13 +475,15 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
 
   startRestTimer: (seconds = 120) => {
     const duration = Math.max(5, seconds)
+    const targetEnd = Date.now() + duration * 1000
     set({
       restTimer: {
         totalSeconds: duration,
-        targetEnd: Date.now() + duration * 1000,
+        targetEnd,
         startedAt: Date.now(),
       },
     })
+    startRestNotifications(targetEnd).catch(() => {})
   },
 
   adjustRestTimer: (deltaSeconds: number) => {
@@ -478,6 +493,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
     const now = Date.now()
     if (newTarget <= now) {
       set({ restTimer: null })
+      cancelRestNotifications().catch(() => {})
       return
     }
     const remaining = Math.ceil((newTarget - now) / 1000)
@@ -488,10 +504,13 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
         totalSeconds: Math.max(restTimer.totalSeconds, remaining),
       },
     })
+    cancelRestNotifications().catch(() => {})
+    startRestNotifications(newTarget).catch(() => {})
   },
 
   skipRestTimer: () => {
     set({ restTimer: null })
+    cancelRestNotifications().catch(() => {})
   },
 
   rehydrate: async () => {
