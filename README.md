@@ -60,17 +60,43 @@ VITE_SUPABASE_ANON_KEY=...
 
 - **PWA**: despliega `dist/` en cualquier hosting HTTPS (Vercel, Netlify, Cloudflare Pages, GitHub Pages) o
   corre `npm run dev -- --host`, abre la URL en Chrome/Safari del móvil y usa **«Instalar aplicación»** / **«Añadir a pantalla de inicio»**.
-- **Android (APK)**: hay un APK de *debug* listo en la raíz del repo → **[`RepLog.apk`](./RepLog.apk)**.
-  Transfiérelo al teléfono y permite «instalar de orígenes desconocidos».
+- **Android (APK)**: compílalo tú mismo (ver «Reconstruir el APK» abajo) y permite «instalar de orígenes
+  desconocidos» en el teléfono. *(El APK no se versiona en el repo: el build hornea las credenciales de Supabase.
+  Si se publica un APK sin credenciales, aparecerá en la pestaña **Releases**.)*
 
-### Reconstruir el APK
-Requiere **JDK 21** y **Android SDK** (`ANDROID_HOME` configurado).
+### Compilar el APK (Android)
+
+**Requisitos (instalar una sola vez):**
+1. **Node.js 20+** y las dependencias del proyecto (`npm install`).
+2. **JDK 21** (Temurin / OpenJDK). Lo exigen Capacitor 8 y el Android Gradle Plugin 8.x.
+3. **Android SDK**. Lo más simple es instalar **Android Studio** (trae SDK + `platform-tools` + `build-tools`).
+   Sin IDE, usa las *command-line tools* de Android y luego:
+   ```bash
+   sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+   sdkmanager --licenses      # acepta todas
+   ```
+4. **Variables de entorno** apuntando a tus rutas:
+   - `JAVA_HOME` → carpeta del JDK 21
+   - `ANDROID_HOME` y `ANDROID_SDK_ROOT` → carpeta del SDK
+   - En el `PATH`: `%JAVA_HOME%\bin` y `%ANDROID_HOME%\platform-tools`
+   - Verifica con `java -version` (debe decir **21.x**).
+
+**Compilar:**
 ```bash
-npm run build
-npx cap sync android
-cd android && ./gradlew assembleDebug      # Windows: .\gradlew.bat assembleDebug
-# salida: android/app/build/outputs/apk/debug/app-debug.apk
+npm run build          # build web (Vite) → dist/
+npx cap sync android   # copia dist/ y los plugins al proyecto Android
+cd android
+./gradlew assembleDebug            # Linux / macOS
+# Windows (PowerShell):  .\gradlew.bat assembleDebug
 ```
+El APK queda en `android/app/build/outputs/apk/debug/app-debug.apk`. Pásalo al teléfono e instálalo
+permitiendo «instalar de orígenes desconocidos».
+
+> **Release firmada:** para distribuir usarías `assembleRelease` con tu propio *keystore*; el APK de *debug*
+> basta para uso personal.
+>
+> **Sync Supabase en el APK:** las variables `VITE_*` se hornean al compilar. Si compilas con tu `.env`, el APK
+> llevará tu sincronización; si compilas sin `.env`, el APK será **solo-local** (cada quien podría usar su propio backend).
 
 ---
 
