@@ -1,4 +1,7 @@
 import { format } from 'date-fns'
+import { Capacitor } from '@capacitor/core'
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import { db } from '../db'
 import { catalog } from '../data/catalog'
 import type {
@@ -97,7 +100,7 @@ export async function importBackupFromText(
   // SEGURIDAD: antes de sobrescribir, descargar copia del estado actual
   const prev = await buildBackup()
   const dateStr = format(new Date(), 'yyyy-MM-dd')
-  downloadBlob(
+  await downloadBlob(
     `replog-backup-previo-${dateStr}.json`,
     'application/json',
     JSON.stringify(prev, null, 2)
@@ -208,9 +211,50 @@ export async function importBackupFromText(
 }
 
 /**
- * Crea un Blob y dispara la descarga en el navegador con fallback para entornos WebView.
+ * Descarga o guarda un archivo. En entornos móviles nativos (Capacitor/Android/iOS):
+ * - Guarda el archivo en almacenamiento del dispositivo
+ * - Abre el menú nativo para guardar en "Descargas / Archivos" o compartirlo.
+ * En entornos web/PWA:
+ * - Dispara la descarga tradicional directa al navegador / carpeta Descargas.
  */
-export function downloadBlob(filename: string, mime: string, content: string): void {
+export async function downloadBlob(filename: string, mime: string, content: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      // 1. Guardar copia en el directorio de Documentos si está disponible
+      try {
+        await Filesystem.writeFile({
+          path: filename,
+          data: content,
+          directory: Directory.Documents,
+          encoding: Encoding.UTF8,
+        })
+      } catch {
+        // Fallback silencioso si el almacenamiento de Documentos está restringido por el SO
+      }
+
+      // 2. Guardar en Cache y abrir hoja de guardado/compartición nativa de Android
+      const fileResult = await Filesystem.writeFile({
+        path: filename,
+        data: content,
+        directory: Directory.Cache,
+        encoding: Encoding.UTF8,
+      })
+
+      await Share.share({
+        title: filename,
+        url: fileResult.uri,
+        dialogTitle: `Guardar ${filename}`,
+      })
+      return
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.toLowerCase().includes('cancel')) {
+        return
+      }
+      console.warn('Error en Filesystem/Share nativo, aplicando fallback:', err)
+    }
+  }
+
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return
   }
@@ -255,7 +299,7 @@ export async function exportJson(): Promise<void> {
   const backup = await buildBackup()
   const dateStr = format(new Date(), 'yyyy-MM-dd')
   const jsonContent = JSON.stringify(backup, null, 2)
-  downloadBlob(`replog-backup-${dateStr}.json`, 'application/json', jsonContent)
+  await downloadBlob(`replog-backup-${dateStr}.json`, 'application/json', jsonContent)
 }
 
 /**
@@ -347,7 +391,7 @@ export async function exportWorkoutsCsv(): Promise<void> {
 
   const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n')
   const dateStr = format(new Date(), 'yyyy-MM-dd')
-  downloadBlob(`replog-entrenos-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
+  await downloadBlob(`replog-entrenos-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
 }
 
 /**
@@ -370,5 +414,5 @@ export async function exportMeasurementsCsv(): Promise<void> {
 
   const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n')
   const dateStr = format(new Date(), 'yyyy-MM-dd')
-  downloadBlob(`replog-medidas-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
+  await downloadBlob(`replog-medidas-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
 }
