@@ -14,6 +14,7 @@ import {
 import { db } from '../db'
 import { useWorkoutStore } from '../store'
 import { ExerciseSelectorModal } from '../components/ExerciseSelectorModal'
+import { ExerciseDemo } from '../components/ExerciseDemo'
 import { RestPicker } from '../components/RestPicker'
 import { formatRest } from '../utils/formatRest'
 import type { WorkoutSetEntry, Exercise } from '../types'
@@ -309,7 +310,13 @@ export function WorkoutPage() {
             >
               {/* Encabezado del ejercicio */}
               <div className="p-3.5 border-b border-neutral-800 bg-neutral-900/90 flex items-start justify-between gap-2">
-                <div>
+                <div className="flex items-start gap-3 min-w-0">
+                  <ExerciseDemo
+                    exerciseId={entry.exerciseId}
+                    variant="thumb"
+                    alt={exercise?.name ?? 'Ejercicio'}
+                  />
+                  <div className="min-w-0">
                   <h3 className="font-bold text-white text-base leading-snug">
                     {exercise?.name ?? 'Ejercicio'}
                   </h3>
@@ -332,6 +339,7 @@ export function WorkoutPage() {
                           : `Descanso: ${formatRest(entry.restSeconds)}`}
                       </span>
                     </button>
+                  </div>
                   </div>
                 </div>
 
