@@ -8,6 +8,8 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registro manual en main.tsx (recarga sola al activar una versión nueva).
+      injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png'],
       manifest: {
         name: 'RepLog',
