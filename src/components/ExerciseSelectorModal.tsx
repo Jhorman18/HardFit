@@ -93,9 +93,11 @@ export function ExerciseSelectorModal({
 
     return exercises.filter((ex) => {
       const normName = normalize(ex.name)
+      const matchesAliases = ex.aliases?.some((alias) => normalize(alias).includes(q))
       const matchesSearch =
         !q ||
         normName.includes(q) ||
+        matchesAliases ||
         synonymTargets.some((target) => normName.includes(target))
       const matchesMuscle = selectedMuscle === 'Todos' || ex.muscleGroup === selectedMuscle
       const isMachine = MACHINE_EQUIPMENT.has(ex.equipment)

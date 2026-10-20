@@ -14,6 +14,7 @@ export interface Exercise {
   equipment: string
   type: ExerciseType
   isCustom: boolean
+  aliases?: string[]
 }
 
 export interface Folder {

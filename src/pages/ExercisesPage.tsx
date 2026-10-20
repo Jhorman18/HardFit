@@ -94,7 +94,8 @@ export function ExercisesPage() {
     if (!exercises) return []
     const q = normalize(searchQuery.trim())
     return exercises.filter((ex) => {
-      const matchesSearch = !q || normalize(ex.name).includes(q)
+      const matchesAliases = ex.aliases?.some((alias) => normalize(alias).includes(q))
+      const matchesSearch = !q || normalize(ex.name).includes(q) || matchesAliases
       const matchesMuscle = selectedMuscle === 'Todos' || ex.muscleGroup === selectedMuscle
       const isMachine = MACHINE_EQUIPMENT.has(ex.equipment)
       const matchesEquipment =
