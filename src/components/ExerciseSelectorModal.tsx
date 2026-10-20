@@ -4,7 +4,15 @@ import { Search, X, Plus } from 'lucide-react'
 import { db } from '../db'
 import { ExerciseDemo } from './ExerciseDemo'
 import { ExerciseFormModal } from './ExerciseFormModal'
+import { ExercisePreviewModal } from './ExercisePreviewModal'
 import type { ExerciseType } from '../types'
+
+// Mapa de sinónimos de búsqueda (claves normalizadas en minúsculas y sin tildes).
+// Fácil de ampliar agregando nuevas equivalencias: 'termino_buscado': ['termino_en_catalogo']
+const SEARCH_SYNONYMS: Record<string, string[]> = {
+  'bulgara': ['split squat'],
+  'bulgaras': ['split squat'],
+}
 
 const PAGE_SIZE = 60
 
@@ -64,6 +72,7 @@ export function ExerciseSelectorModal({
   const [selectedMuscle, setSelectedMuscle] = useState('Todos')
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentFilter>('Todos')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const exercises = useLiveQuery(() => db.exercises.toArray(), [])
@@ -71,8 +80,23 @@ export function ExerciseSelectorModal({
   const filteredExercises = useMemo(() => {
     if (!exercises) return []
     const q = normalize(searchQuery.trim())
+
+    // Sinónimos aplicables a la búsqueda actual
+    const synonymTargets: string[] = []
+    if (q) {
+      for (const [key, targets] of Object.entries(SEARCH_SYNONYMS)) {
+        if (key.includes(q) || q.includes(key)) {
+          synonymTargets.push(...targets)
+        }
+      }
+    }
+
     return exercises.filter((ex) => {
-      const matchesSearch = !q || normalize(ex.name).includes(q)
+      const normName = normalize(ex.name)
+      const matchesSearch =
+        !q ||
+        normName.includes(q) ||
+        synonymTargets.some((target) => normName.includes(target))
       const matchesMuscle = selectedMuscle === 'Todos' || ex.muscleGroup === selectedMuscle
       const isMachine = MACHINE_EQUIPMENT.has(ex.equipment)
       const matchesEquipment =
@@ -233,7 +257,18 @@ export function ExerciseSelectorModal({
                     className="p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 active:scale-[0.99] bg-neutral-900 hover:bg-neutral-800/80 border-neutral-800"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <ExerciseDemo exerciseId={exercise.id} variant="thumb" alt={exercise.name} />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setPreviewExerciseId(exercise.id)
+                        }}
+                        className="shrink-0 rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/40 active:scale-95 transition"
+                        title="Ver vista previa"
+                        aria-label={`Ver vista previa de ${exercise.name}`}
+                      >
+                        <ExerciseDemo exerciseId={exercise.id} variant="thumb" alt={exercise.name} />
+                      </button>
                       <div className="space-y-1 min-w-0">
                         <div className="font-semibold text-white text-sm leading-snug truncate">
                           {exercise.name}
@@ -324,6 +359,18 @@ export function ExerciseSelectorModal({
           handleAdd(id)
         }}
       />
+
+      {/* Modal de vista previa de ejercicio */}
+      {previewExerciseId && (
+        <ExercisePreviewModal
+          exerciseId={previewExerciseId}
+          onClose={() => setPreviewExerciseId(null)}
+          onAdd={(id) => {
+            setPreviewExerciseId(null)
+            handleAdd(id)
+          }}
+        />
+      )}
     </div>
   )
 }
