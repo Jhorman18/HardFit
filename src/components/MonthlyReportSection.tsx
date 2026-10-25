@@ -16,6 +16,7 @@ export interface MonthlyReportSectionProps {
   exercisesById: Map<string, Exercise>
   unit?: string
   bodyweightKg?: number
+  onPreviewExercise?: (exerciseId: string) => void
 }
 
 function formatDurationSec(seconds: number): string {
@@ -37,6 +38,7 @@ export function MonthlyReportSection({
   exercisesById,
   unit = 'kg',
   bodyweightKg,
+  onPreviewExercise,
 }: MonthlyReportSectionProps) {
   const [today] = useState(() => new Date())
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date())
@@ -181,10 +183,18 @@ export function MonthlyReportSection({
                       exerciseId={ex.exerciseId}
                       variant="thumb"
                       className="w-10 h-10 shrink-0"
+                      onClick={onPreviewExercise ? () => onPreviewExercise(ex.exerciseId) : undefined}
                     />
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-white truncate">{ex.name}</p>
+                      <p
+                        onClick={onPreviewExercise ? () => onPreviewExercise(ex.exerciseId) : undefined}
+                        className={`text-xs font-semibold text-white truncate ${
+                          onPreviewExercise ? 'cursor-pointer hover:text-neutral-300 transition' : ''
+                        }`}
+                      >
+                        {ex.name}
+                      </p>
                       <span className="text-[10px] text-neutral-400 bg-neutral-950 border border-neutral-800 px-1.5 py-0.5 rounded mt-0.5 inline-block">
                         {ex.muscleGroup}
                       </span>

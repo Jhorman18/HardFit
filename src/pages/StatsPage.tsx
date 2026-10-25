@@ -7,6 +7,8 @@ import { RadarStatsSection } from '../components/RadarStatsSection'
 import { MonthlyReportSection } from '../components/MonthlyReportSection'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { HealthMetricsSection } from '../components/HealthMetricsSection'
+import { ExerciseDemo } from '../components/ExerciseDemo'
+import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
 import {
   ResponsiveContainer,
   AreaChart,
@@ -112,6 +114,7 @@ export function StatsPage() {
 
   // Estado para el selector de ejercicio
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>('')
+  const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
   const [selectedMetric, setSelectedMetric] = useState<SeriesMetric>('1rm')
   const [chartType, setChartType] = useState<'area' | 'bar'>('area')
 
@@ -509,14 +512,26 @@ export function StatsPage() {
           </div>
         ) : (
           <>
-            {/* Selector de ejercicio con buscador */}
-            <SearchableSelect
-              options={exerciseSelectOptions}
-              value={activeExerciseId}
-              onChange={setSelectedExerciseId}
-              placeholder="Buscar ejercicio entrenado..."
-              emptyMessage="No se encontraron ejercicios entrenados"
-            />
+            {/* Selector de ejercicio con buscador y miniatura interactiva */}
+            <div className="flex items-center gap-2.5">
+              {activeExerciseId && (
+                <ExerciseDemo
+                  exerciseId={activeExerciseId}
+                  variant="thumb"
+                  className="w-10 h-10 shrink-0"
+                  onClick={() => setPreviewExerciseId(activeExerciseId)}
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <SearchableSelect
+                  options={exerciseSelectOptions}
+                  value={activeExerciseId}
+                  onChange={setSelectedExerciseId}
+                  placeholder="Buscar ejercicio entrenado..."
+                  emptyMessage="No se encontraron ejercicios entrenados"
+                />
+              </div>
+            </div>
 
         {/* TARJETAS DE RÉCORDS PERSONALES DEL EJERCICIO */}
         {activePRs && (
@@ -702,6 +717,7 @@ export function StatsPage() {
       <TopExercisesSection
         workouts={workouts || []}
         exercisesById={exerciseMap}
+        onPreviewExercise={setPreviewExerciseId}
       />
 
       <BodyMapPeriodSection
@@ -714,8 +730,17 @@ export function StatsPage() {
         exercisesById={exerciseMap}
         unit={unit}
         bodyweightKg={latestBodyweight}
+        onPreviewExercise={setPreviewExerciseId}
       />
     </div>
+  )}
+
+  {previewExerciseId && (
+    <ExercisePreviewModal
+      exerciseId={previewExerciseId}
+      onClose={() => setPreviewExerciseId(null)}
+      onAdd={() => setPreviewExerciseId(null)}
+    />
   )}
 </div>
 )

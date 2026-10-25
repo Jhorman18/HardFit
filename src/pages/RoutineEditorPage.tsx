@@ -11,9 +11,12 @@ import {
   ChevronDown,
   Trash2,
   X,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { db } from '../db'
 import { ExerciseSelectorModal } from '../components/ExerciseSelectorModal'
+import { ExerciseDemo } from '../components/ExerciseDemo'
+import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
 import type { Routine, RoutineItem, RoutineItemTargetSet, Exercise } from '../types'
 
 function generateId(): string {
@@ -35,6 +38,8 @@ export function RoutineEditorPage() {
   const [items, setItems] = useState<RoutineItem[]>([])
   const [existingOrder, setExistingOrder] = useState<number>(0)
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
+  const [replacingItemIndex, setReplacingItemIndex] = useState<number | null>(null)
+  const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(id))
 
@@ -78,6 +83,18 @@ export function RoutineEditorPage() {
   }, [id, navigate])
 
   const handleAddExercises = (exerciseIds: string[]) => {
+    if (replacingItemIndex !== null) {
+      if (exerciseIds.length > 0) {
+        setItems((prev) =>
+          prev.map((item, idx) =>
+            idx === replacingItemIndex ? { ...item, exerciseId: exerciseIds[0] } : item
+          )
+        )
+      }
+      setReplacingItemIndex(null)
+      return
+    }
+
     const newItems: RoutineItem[] = exerciseIds.map((exId, idx) => {
       const ex = exerciseMap.get(exId)
       const type = ex?.type ?? 'weight_reps'
@@ -343,13 +360,22 @@ export function RoutineEditorPage() {
                   className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm"
                 >
                   {/* Encabezado del Ejercicio */}
-                  <div className="p-3.5 border-b border-neutral-800 bg-neutral-900/95 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
+                  <div className="p-3.5 border-b border-neutral-800 bg-neutral-900/95 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <span className="w-6 h-6 rounded-lg bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
                         {itemIdx + 1}
                       </span>
-                      <div>
-                        <h3 className="font-bold text-white text-sm leading-snug">
+                      <ExerciseDemo
+                        exerciseId={item.exerciseId}
+                        variant="thumb"
+                        className="w-10 h-10 shrink-0"
+                        onClick={() => setPreviewExerciseId(item.exerciseId)}
+                      />
+                      <div className="min-w-0">
+                        <h3
+                          onClick={() => setPreviewExerciseId(item.exerciseId)}
+                          className="font-bold text-white text-sm leading-snug truncate cursor-pointer hover:text-neutral-300 transition"
+                        >
                           {exercise?.name ?? 'Ejercicio desconocido'}
                         </h3>
                         <div className="flex items-center gap-2 text-[11px] text-neutral-400 mt-0.5">
@@ -362,6 +388,19 @@ export function RoutineEditorPage() {
 
                     {/* Acciones de reordenar y eliminar */}
                     <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplacingItemIndex(itemIdx)
+                          setIsSelectorOpen(true)
+                        }}
+                        className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-750 text-neutral-300 hover:text-white flex items-center gap-1 text-xs font-medium transition border border-neutral-700/60 mr-1"
+                        title="Cambiar este ejercicio por otro manteniendo las series"
+                        aria-label="Cambiar ejercicio"
+                      >
+                        <ArrowLeftRight size={13} />
+                        <span>Cambiar</span>
+                      </button>
                       <button
                         type="button"
                         disabled={itemIdx === 0}
@@ -604,9 +643,21 @@ export function RoutineEditorPage() {
       {/* Selector modal reutilizado */}
       <ExerciseSelectorModal
         isOpen={isSelectorOpen}
-        onClose={() => setIsSelectorOpen(false)}
+        onClose={() => {
+          setIsSelectorOpen(false)
+          setReplacingItemIndex(null)
+        }}
         onSelectExercises={handleAddExercises}
       />
+
+      {/* Modal de vista previa del ejercicio */}
+      {previewExerciseId && (
+        <ExercisePreviewModal
+          exerciseId={previewExerciseId}
+          onClose={() => setPreviewExerciseId(null)}
+          onAdd={() => setPreviewExerciseId(null)}
+        />
+      )}
     </div>
   )
 }

@@ -8,11 +8,12 @@ import { ExerciseDemo } from './ExerciseDemo'
 export interface TopExercisesSectionProps {
   workouts: Workout[]
   exercisesById: Map<string, Exercise>
+  onPreviewExercise?: (exerciseId: string) => void
 }
 
 type PeriodOption = '7d' | '30d' | 'all'
 
-export function TopExercisesSection({ workouts, exercisesById }: TopExercisesSectionProps) {
+export function TopExercisesSection({ workouts, exercisesById, onPreviewExercise }: TopExercisesSectionProps) {
   const [period, setPeriod] = useState<PeriodOption>('30d')
   const [now] = useState(() => new Date())
 
@@ -86,10 +87,18 @@ export function TopExercisesSection({ workouts, exercisesById }: TopExercisesSec
                 exerciseId={item.exerciseId}
                 variant="thumb"
                 className="w-11 h-11 shrink-0"
+                onClick={onPreviewExercise ? () => onPreviewExercise(item.exerciseId) : undefined}
               />
 
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-white truncate">{item.name}</p>
+                <p
+                  onClick={onPreviewExercise ? () => onPreviewExercise(item.exerciseId) : undefined}
+                  className={`text-xs font-semibold text-white truncate ${
+                    onPreviewExercise ? 'cursor-pointer hover:text-neutral-300 transition' : ''
+                  }`}
+                >
+                  {item.name}
+                </p>
                 <span className="text-[10px] text-neutral-400 bg-neutral-950 border border-neutral-800 px-1.5 py-0.5 rounded mt-0.5 inline-block">
                   {item.muscleGroup}
                 </span>

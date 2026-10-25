@@ -255,24 +255,15 @@ export function ExerciseSelectorModal({
                 return (
                   <div
                     key={exercise.id}
-                    onClick={() => handleAdd(exercise.id)}
-                    className="p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 active:scale-[0.99] bg-neutral-900 hover:bg-neutral-800/80 border-neutral-800"
+                    onClick={() => setPreviewExerciseId(exercise.id)}
+                    className="p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 active:scale-[0.99] bg-neutral-900 hover:bg-neutral-800/80 border-neutral-800 group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setPreviewExerciseId(exercise.id)
-                        }}
-                        className="shrink-0 rounded-xl overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/40 active:scale-95 transition"
-                        title="Ver vista previa"
-                        aria-label={`Ver vista previa de ${exercise.name}`}
-                      >
+                      <div className="shrink-0 rounded-xl overflow-hidden">
                         <ExerciseDemo exerciseId={exercise.id} variant="thumb" alt={exercise.name} />
-                      </button>
+                      </div>
                       <div className="space-y-1 min-w-0">
-                        <div className="font-semibold text-white text-sm leading-snug truncate">
+                        <div className="font-semibold text-white text-sm leading-snug truncate group-hover:text-neutral-200 transition">
                           {exercise.name}
                         </div>
                         <div className="flex items-center gap-2 text-xs">
@@ -285,13 +276,19 @@ export function ExerciseSelectorModal({
                       </div>
                     </div>
 
-                    {/* Botón de añadir */}
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border border-neutral-700 bg-neutral-800/60 text-neutral-300"
-                      aria-label="Añadir"
+                    {/* Botón de añadir (solo se añade si se pulsa este botón) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleAdd(exercise.id)
+                      }}
+                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-neutral-700 bg-neutral-800 hover:bg-white hover:text-black hover:border-white text-neutral-200 active:scale-90 transition shadow-sm"
+                      title={`Añadir ${exercise.name}`}
+                      aria-label={`Añadir ${exercise.name}`}
                     >
-                      <Plus size={16} strokeWidth={2.5} />
-                    </div>
+                      <Plus size={18} strokeWidth={2.5} />
+                    </button>
                   </div>
                 )
               })}

@@ -41,3 +41,6 @@ RepLog.apk
 import-entrenamiento.json
 *-backup-*.json
 replog-backup-*.json
+
+# Skill local de orquestacion (no publicar)
+delegar-antigravity/

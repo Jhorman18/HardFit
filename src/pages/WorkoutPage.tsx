@@ -10,11 +10,13 @@ import {
   Trophy,
   AlertTriangle,
   Timer,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { db } from '../db'
 import { useWorkoutStore } from '../store'
 import { ExerciseSelectorModal } from '../components/ExerciseSelectorModal'
 import { ExerciseDemo } from '../components/ExerciseDemo'
+import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
 import { RestPicker } from '../components/RestPicker'
 import { formatRest } from '../utils/formatRest'
 import type { WorkoutSetEntry, Exercise } from '../types'
@@ -56,6 +58,7 @@ export function WorkoutPage() {
     updateWorkoutName,
     updateWorkoutNotes,
     addExercise,
+    replaceExercise,
     removeExercise,
     addSet,
     updateSet,
@@ -74,6 +77,8 @@ export function WorkoutPage() {
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
   const [elapsedTime, setElapsedTime] = useState('00:00')
   const [restPickerState, setRestPickerState] = useState<PickerState>(null)
+  const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
+  const [replacingEntryIndex, setReplacingEntryIndex] = useState<number | null>(null)
 
   const unit = (settings && 'units' in settings && settings.units) || 'kg'
   const showRpe = !!(settings && 'showRpe' in settings && settings.showRpe)
@@ -157,6 +162,13 @@ export function WorkoutPage() {
   }
 
   const handleAddExercises = (exerciseIds: string[]) => {
+    if (replacingEntryIndex !== null) {
+      if (exerciseIds.length > 0) {
+        replaceExercise(replacingEntryIndex, exerciseIds[0])
+      }
+      setReplacingEntryIndex(null)
+      return
+    }
     for (const id of exerciseIds) {
       addExercise(id)
     }
@@ -315,9 +327,13 @@ export function WorkoutPage() {
                     exerciseId={entry.exerciseId}
                     variant="thumb"
                     alt={exercise?.name ?? 'Ejercicio'}
+                    onClick={() => setPreviewExerciseId(entry.exerciseId)}
                   />
                   <div className="min-w-0">
-                  <h3 className="font-bold text-white text-base leading-snug">
+                  <h3
+                    onClick={() => setPreviewExerciseId(entry.exerciseId)}
+                    className="font-bold text-white text-base leading-snug cursor-pointer hover:text-neutral-300 transition"
+                  >
                     {exercise?.name ?? 'Ejercicio'}
                   </h3>
                   <div className="flex flex-wrap items-center gap-2 text-xs mt-1">
@@ -343,15 +359,31 @@ export function WorkoutPage() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => removeExercise(entryIndex)}
-                  className="text-neutral-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
-                  title="Eliminar ejercicio"
-                  aria-label="Eliminar ejercicio"
-                >
-                  <X size={16} />
-                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReplacingEntryIndex(entryIndex)
+                      setIsSelectorOpen(true)
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-750 text-neutral-300 hover:text-white flex items-center gap-1.5 text-xs font-medium transition border border-neutral-700/60"
+                    title="Cambiar este ejercicio por otro manteniendo las series"
+                    aria-label="Cambiar ejercicio"
+                  >
+                    <ArrowLeftRight size={13} />
+                    <span>Cambiar</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => removeExercise(entryIndex)}
+                    className="text-neutral-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
+                    title="Eliminar ejercicio"
+                    aria-label="Eliminar ejercicio"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* Tabla de series */}
@@ -782,7 +814,10 @@ export function WorkoutPage() {
       {/* Selector modal de ejercicios */}
       <ExerciseSelectorModal
         isOpen={isSelectorOpen}
-        onClose={() => setIsSelectorOpen(false)}
+        onClose={() => {
+          setIsSelectorOpen(false)
+          setReplacingEntryIndex(null)
+        }}
         onSelectExercises={handleAddExercises}
       />
 
@@ -814,6 +849,14 @@ export function WorkoutPage() {
               : undefined
           }
           onClose={() => setRestPickerState(null)}
+        />
+      )}
+      {/* Modal de vista previa del ejercicio */}
+      {previewExerciseId && (
+        <ExercisePreviewModal
+          exerciseId={previewExerciseId}
+          onClose={() => setPreviewExerciseId(null)}
+          onAdd={() => setPreviewExerciseId(null)}
         />
       )}
     </div>

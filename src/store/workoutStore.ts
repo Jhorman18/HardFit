@@ -30,6 +30,7 @@ export interface WorkoutSessionState {
 
   // Exercise & Set management
   addExercise: (exerciseId: string) => void
+  replaceExercise: (entryIndex: number, newExerciseId: string) => void
   removeExercise: (entryIndex: number) => void
   addSet: (entryIndex: number) => void
   updateSet: (entryIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>) => void
@@ -287,6 +288,20 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
       ...activeWorkout,
       entries: [...activeWorkout.entries, newEntry],
     }
+    set({ activeWorkout: updated })
+    persistActiveWorkout(updated)
+  },
+
+  replaceExercise: (entryIndex: number, newExerciseId: string) => {
+    const { activeWorkout } = get()
+    if (!activeWorkout || !activeWorkout.entries[entryIndex]) return
+
+    const entries = [...activeWorkout.entries]
+    entries[entryIndex] = {
+      ...entries[entryIndex],
+      exerciseId: newExerciseId,
+    }
+    const updated = { ...activeWorkout, entries }
     set({ activeWorkout: updated })
     persistActiveWorkout(updated)
   },
