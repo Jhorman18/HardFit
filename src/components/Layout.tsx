@@ -40,11 +40,11 @@ export function Layout() {
           <div className="flex items-center gap-2.5">
             <img
               src="/icon-192.png"
-              alt="RepLog"
-              className="w-8 h-8 rounded-lg border border-neutral-800 bg-white object-contain shadow-sm"
+              alt="Kitaeru"
+              className="w-8 h-8 rounded-lg border border-neutral-800 bg-[#ffffff] object-contain shadow-sm"
             />
             <div>
-              <span className="font-extrabold tracking-tight text-white text-base">RepLog</span>
+              <span className="font-extrabold tracking-tight text-white text-base">Kitaeru</span>
               <span className="ml-1.5 text-[10px] uppercase font-semibold text-neutral-300 bg-neutral-900 border border-neutral-700 px-1.5 py-0.5 rounded">
                 Local
               </span>

@@ -164,9 +164,10 @@ export const FALLBACK_MUSCLE_GROUP_TO_KEYS: Record<string, MuscleKey[]> = {
 }
 
 /**
- * Suma de series válidas que tocan cada músculo (usando primary+secondary de exerciseMedia[id];
- * si no está en exerciseMedia, usa el muscleGroup mapeado a MuscleKey aproximadas).
+ * Suma de series válidas que tocan cada músculo (usando primary [1 serie] + secondary [0.5 series]
+ * de exerciseMedia[id]; si no está en exerciseMedia, usa el muscleGroup mapeado a MuscleKey aproximadas con 1 serie).
  * Aplica overrides si están disponibles para excluir músculos desactivados por el usuario.
+ * Si un músculo aparece en primary y secondary, cuenta solo como primario (1).
  */
 export function musclesWorkedInPeriod(
   workouts: Workout[],
@@ -192,21 +193,34 @@ export function musclesWorkedInPeriod(
       const baseMedia =
         (exerciseMediaMap && exerciseMediaMap[entry.exerciseId]) ||
         exerciseMedia[entry.exerciseId]
-      let keys: MuscleKey[] = []
 
       if (baseMedia) {
         const eff = getEffectiveMedia(entry.exerciseId, overrides, exerciseMediaMap)
-        keys = Array.from(new Set([...eff.primary, ...eff.secondary]))
+        const primarySet = new Set(eff.primary)
+
+        // Primarios suman 1 serie por cada serie válida
+        for (const key of primarySet) {
+          result[key] = (result[key] || 0) + validSetsCount * 1
+        }
+
+        // Secundarios suman 0.5 series por cada serie válida (si no están ya en primarios)
+        const secondarySet = new Set(eff.secondary.filter((k) => !primarySet.has(k)))
+        for (const key of secondarySet) {
+          result[key] = (result[key] || 0) + validSetsCount * 0.5
+        }
       } else {
         const ex = getExercise(entry.exerciseId, exercisesById)
         const mg = ex?.muscleGroup || ''
-        keys = FALLBACK_MUSCLE_GROUP_TO_KEYS[mg] || []
-      }
-
-      for (const key of keys) {
-        result[key] = (result[key] || 0) + validSetsCount
+        const keys = FALLBACK_MUSCLE_GROUP_TO_KEYS[mg] || []
+        for (const key of new Set(keys)) {
+          result[key] = (result[key] || 0) + validSetsCount * 1
+        }
       }
     }
+  }
+
+  for (const k of Object.keys(result) as MuscleKey[]) {
+    result[k] = Math.round(result[k] * 10) / 10
   }
 
   return result
@@ -274,8 +288,19 @@ export interface RadarRegionData {
 }
 
 /**
+ * Formatea un conteo de series a un máximo de 1 decimal sin ".0"
+ * (ej: 7.5 o 8, nunca 7.500000001 ni 8.0).
+ */
+export function formatSetsCount(val: number): string {
+  const rounded = Math.round(val * 10) / 10
+  return rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)
+}
+
+/**
  * Series válidas por eje del radar: Espalda, Pecho, Core, Hombros, Brazos, Piernas.
- * Usa los músculos efectivos si el ejercicio cuenta con media en catálogo, o el muscleGroup como fallback.
+ * Usa los músculos efectivos si el ejercicio cuenta con media en catálogo (primarios 1 serie,
+ * secundarios 0.5 series; si una región es tocada por primarios, cuenta como primario),
+ * o el muscleGroup como fallback (1 serie).
  */
 export function radarByRegion(
   workouts: Workout[],
@@ -307,23 +332,40 @@ export function radarByRegion(
       const baseMedia = exerciseMedia[entry.exerciseId]
       if (baseMedia) {
         const eff = getEffectiveMedia(entry.exerciseId, overrides)
-        const keys = Array.from(new Set([...eff.primary, ...eff.secondary]))
-        const axes = new Set<RadarAxis>()
-        for (const k of keys) {
+        const primaryAxes = new Set<RadarAxis>()
+        for (const k of eff.primary) {
           const ax = mapMuscleKeyToRadarAxis(k)
-          if (ax) axes.add(ax)
+          if (ax) primaryAxes.add(ax)
         }
-        for (const ax of axes) {
-          result[ax] += validCount
+        for (const ax of primaryAxes) {
+          result[ax] += validCount * 1
+        }
+
+        const primaryKeySet = new Set(eff.primary)
+        const secondaryAxes = new Set<RadarAxis>()
+        for (const k of eff.secondary) {
+          if (!primaryKeySet.has(k)) {
+            const ax = mapMuscleKeyToRadarAxis(k)
+            if (ax && !primaryAxes.has(ax)) {
+              secondaryAxes.add(ax)
+            }
+          }
+        }
+        for (const ax of secondaryAxes) {
+          result[ax] += validCount * 0.5
         }
       } else {
         const ex = getExercise(entry.exerciseId, exercisesById)
         const axis = mapMuscleGroupToRadarAxis(ex?.muscleGroup)
         if (axis) {
-          result[axis] += validCount
+          result[axis] += validCount * 1
         }
       }
     }
+  }
+
+  for (const ax of Object.keys(result) as RadarAxis[]) {
+    result[ax] = Math.round(result[ax] * 10) / 10
   }
 
   return result

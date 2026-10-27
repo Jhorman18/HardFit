@@ -106,7 +106,7 @@ export function MuscleToggleList({ exerciseId, className = '' }: MuscleToggleLis
                   type="checkbox"
                   checked={isActive}
                   onChange={() => handleToggle(item.key)}
-                  className="rounded border-neutral-700 bg-neutral-800 text-white focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4 accent-white"
+                  className="rounded border-neutral-700 bg-neutral-800 focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                 />
                 <span
                   className={`font-medium truncate ${

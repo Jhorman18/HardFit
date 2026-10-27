@@ -136,7 +136,7 @@ export function BodyMuscleChart({
             <path
               d={bodyFrontOutline}
               fill="none"
-              stroke="#262626"
+              stroke="rgb(var(--n-800))"
               strokeWidth="2"
               vectorEffect="non-scaling-stroke"
             />
@@ -161,7 +161,7 @@ export function BodyMuscleChart({
                       key={`f-${part.slug}-${i}`}
                       d={d}
                       fill={fill}
-                      stroke="#171717"
+                      stroke="rgb(var(--n-900))"
                       strokeWidth="1.2"
                       vectorEffect="non-scaling-stroke"
                       className="cursor-pointer transition-opacity hover:opacity-80"
@@ -186,7 +186,7 @@ export function BodyMuscleChart({
             <path
               d={bodyBackOutline}
               fill="none"
-              stroke="#262626"
+              stroke="rgb(var(--n-800))"
               strokeWidth="2"
               vectorEffect="non-scaling-stroke"
             />
@@ -211,7 +211,7 @@ export function BodyMuscleChart({
                       key={`b-${part.slug}-${i}`}
                       d={d}
                       fill={fill}
-                      stroke="#171717"
+                      stroke="rgb(var(--n-900))"
                       strokeWidth="1.2"
                       vectorEffect="non-scaling-stroke"
                       className="cursor-pointer transition-opacity hover:opacity-80"

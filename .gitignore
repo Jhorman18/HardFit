@@ -35,12 +35,11 @@ dist-ssr
 *.tmp
 
 # APK con credenciales horneadas: no publicar en repo publico
-RepLog.apk
+Kitaeru.apk
 
 # Backups de datos del usuario (no publicar)
 import-entrenamiento.json
 *-backup-*.json
-replog-backup-*.json
 
 # Skill local de orquestacion (no publicar)
 delegar-antigravity/

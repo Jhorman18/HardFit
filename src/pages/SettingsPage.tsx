@@ -17,10 +17,14 @@ import {
   Activity,
   Check,
   Plus,
+  Palette,
+  Pipette,
+  RotateCcw,
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { db } from '../db'
+import { useTheme, THEMES, getVisiblePresets, type ThemeId } from '../theme'
 import {
   exportJson,
   exportWorkoutsCsv,
@@ -37,6 +41,14 @@ import { useSyncStore } from '../sync'
 import type { Settings } from '../types'
 
 export function SettingsPage() {
+  const { themeId, accent, setThemeId, setAccent } = useTheme()
+  const currentThemeDef = THEMES[themeId] || THEMES.clasico
+  const visiblePresets = getVisiblePresets(currentThemeDef.mode)
+  const activeAccent = accent || currentThemeDef.defaultAccent
+  const isCustomAccent =
+    accent !== null &&
+    !visiblePresets.some((p) => p.hex.toLowerCase() === accent.toLowerCase())
+
   const [exportStatus, setExportStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
@@ -188,6 +200,233 @@ export function SettingsPage() {
         </p>
       </div>
 
+      {/* Apariencia: Temas y Color de Acento */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Palette size={16} />
+              Apariencia
+            </h2>
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Personaliza el estilo visual de la aplicación y el color de acento de los botones.
+            </p>
+          </div>
+        </div>
+
+        {/* Tarjetas selectoras de tema */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
+            Tema
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {(
+              [
+                {
+                  id: 'clasico',
+                  name: 'Clásico',
+                  modeLabel: 'Oscuro puro',
+                  bg: '#000000',
+                  surface: '#171717',
+                  border: '#262626',
+                  sampleAccent: '#ffffff',
+                  sampleAccentFg: '#000000',
+                },
+                {
+                  id: 'replog',
+                  name: 'Kitaeru',
+                  modeLabel: 'Azul-negro',
+                  bg: '#0b0f14',
+                  surface: '#171d26',
+                  border: '#1f2630',
+                  sampleAccent: '#f97316',
+                  sampleAccentFg: '#0b0f14',
+                },
+                {
+                  id: 'claro',
+                  name: 'Claro',
+                  modeLabel: 'Limpio',
+                  bg: '#f7f8fa',
+                  surface: '#ffffff',
+                  border: '#e2e6eb',
+                  sampleAccent: '#0b0f14',
+                  sampleAccentFg: '#ffffff',
+                },
+              ] as const
+            ).map((t) => {
+              const isSelected = themeId === t.id
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setThemeId(t.id as ThemeId)}
+                  className={`p-2.5 rounded-xl border text-left transition relative flex flex-col justify-between h-24 ${
+                    isSelected
+                      ? 'border-white bg-neutral-800 shadow-sm'
+                      : 'border-neutral-800 bg-neutral-950/60 hover:bg-neutral-800/40 hover:border-neutral-700'
+                  }`}
+                >
+                  {/* Mini preview */}
+                  <div
+                    className="w-full h-10 rounded-lg p-1.5 flex items-center justify-between border shadow-inner"
+                    style={{ backgroundColor: t.bg, borderColor: t.border }}
+                  >
+                    <div
+                      className="w-5 h-5 rounded border flex items-center justify-center"
+                      style={{ backgroundColor: t.surface, borderColor: t.border }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: t.sampleAccent }}
+                      />
+                    </div>
+                    {/* Botón miniatura de muestra */}
+                    <div
+                      className="px-1.5 py-0.5 rounded text-[8px] font-bold shadow-sm"
+                      style={{
+                        backgroundColor:
+                          accent && isSelected ? activeAccent : t.sampleAccent,
+                        color:
+                          accent && isSelected
+                            ? currentThemeDef.mode === 'light' && activeAccent === '#0b0f14'
+                              ? '#ffffff'
+                              : '#0b0f14'
+                            : t.sampleAccentFg,
+                      }}
+                    >
+                      Btn
+                    </div>
+                  </div>
+
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-white leading-tight">
+                        {t.name}
+                      </div>
+                      <div className="text-[10px] text-neutral-400">{t.modeLabel}</div>
+                    </div>
+                    {isSelected && (
+                      <span className="w-4 h-4 rounded-full bg-white text-black flex items-center justify-center shrink-0">
+                        <Check size={10} strokeWidth={3} />
+                      </span>
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Fila de colores de acento */}
+        <div className="space-y-2 pt-1 border-t border-neutral-800/80">
+          <div className="flex items-center justify-between">
+            <label className="block text-[11px] font-semibold text-neutral-400 uppercase tracking-wider">
+              Color de acento
+            </label>
+            <button
+              type="button"
+              onClick={() => setAccent(null)}
+              className={`text-[11px] font-semibold flex items-center gap-1 transition px-2 py-0.5 rounded-lg border ${
+                accent === null
+                  ? 'border-white text-white bg-neutral-800'
+                  : 'border-transparent text-neutral-400 hover:text-white'
+              }`}
+            >
+              <RotateCcw size={11} />
+              <span>Por defecto</span>
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            {visiblePresets.map((preset) => {
+              const isSelected =
+                (accent !== null &&
+                  accent.toLowerCase() === preset.hex.toLowerCase()) ||
+                (accent === null &&
+                  currentThemeDef.defaultAccent.toLowerCase() ===
+                    preset.hex.toLowerCase())
+
+              return (
+                <button
+                  key={preset.hex}
+                  type="button"
+                  title={`${preset.name} (${preset.hex})`}
+                  onClick={() => setAccent(preset.hex)}
+                  className={`w-8 h-8 rounded-full transition-transform flex items-center justify-center shadow-sm relative ${
+                    isSelected ? 'ring-2 ring-white scale-110' : 'hover:scale-105 opacity-90 hover:opacity-100'
+                  }`}
+                  style={{
+                    backgroundColor: preset.hex,
+                    border: preset.hex.toLowerCase() === '#ffffff' ? '1px solid #d4d4d4' : undefined,
+                  }}
+                >
+                  {isSelected && (
+                    <Check
+                      size={14}
+                      strokeWidth={3}
+                      style={{
+                        color:
+                          preset.hex.toLowerCase() === '#ffffff' ||
+                          preset.hex.toLowerCase() === '#eab308' ||
+                          preset.hex.toLowerCase() === '#22c55e' ||
+                          preset.hex.toLowerCase() === '#f97316'
+                            ? '#0b0f14'
+                            : '#ffffff',
+                      }}
+                    />
+                  )}
+                </button>
+              )
+            })}
+
+            {/* Selector de color personalizado */}
+            <label
+              title="Color personalizado"
+              className={`w-8 h-8 rounded-full cursor-pointer transition-transform flex items-center justify-center shadow-sm relative border border-neutral-700 ${
+                isCustomAccent
+                  ? 'ring-2 ring-white scale-110'
+                  : 'hover:scale-105 opacity-90 hover:opacity-100'
+              }`}
+              style={{
+                background: isCustomAccent
+                  ? activeAccent
+                  : 'conic-gradient(from 180deg at 50% 50%, #ef4444, #f59e0b, #10b981, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444)',
+              }}
+            >
+              <input
+                type="color"
+                value={activeAccent}
+                onChange={(e) => setAccent(e.target.value)}
+                className="sr-only"
+                aria-label="Elegir color personalizado"
+              />
+              {isCustomAccent ? (
+                <Check
+                  size={14}
+                  strokeWidth={3}
+                  className="text-white drop-shadow-sm"
+                />
+              ) : (
+                <Pipette size={12} className="text-white drop-shadow-sm pointer-events-none" />
+              )}
+            </label>
+          </div>
+
+          <div className="text-[11px] text-neutral-400 bg-neutral-950 p-2.5 rounded-lg border border-neutral-800 flex items-center justify-between">
+            <span>
+              Tema activo: <strong className="text-white">{currentThemeDef.name}</strong>
+            </span>
+            <div className="flex items-center gap-1.5 font-mono text-[10px]">
+              <span
+                className="w-2.5 h-2.5 rounded-full inline-block border border-neutral-700"
+                style={{ backgroundColor: activeAccent }}
+              />
+              <span className="text-neutral-300">{activeAccent.toUpperCase()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Cuenta y sincronización */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4">
         <div className="flex items-start justify-between gap-3">
@@ -197,7 +436,7 @@ export function SettingsPage() {
               Cuenta y Sincronización
             </h2>
             <p className="text-xs text-neutral-400 mt-0.5">
-              Sincroniza tus datos en la nube manteniendo local-first (opcional; RepLog funciona 100% offline).
+              Sincroniza tus datos en la nube manteniendo local-first (opcional; Kitaeru funciona 100% offline).
             </p>
           </div>
           {user && (
@@ -343,7 +582,7 @@ export function SettingsPage() {
             </div>
 
             <div className="text-[11px] text-neutral-400 bg-neutral-950 p-2.5 rounded-lg border border-neutral-800">
-              El inicio de sesión es opcional. RepLog es local-first y funciona sin cuenta.
+              El inicio de sesión es opcional. Kitaeru es local-first y funciona sin cuenta.
             </div>
           </form>
         )}
@@ -453,7 +692,7 @@ export function SettingsPage() {
           >
             <span
               className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${
-                currentShowRpe ? 'translate-x-5 bg-black' : 'translate-x-0 bg-neutral-400'
+                currentShowRpe ? 'translate-x-5 bg-accent-fg' : 'translate-x-0 bg-neutral-400'
               }`}
             />
           </button>
@@ -490,7 +729,7 @@ export function SettingsPage() {
           >
             <span
               className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${
-                currentEnableHealthMetrics ? 'translate-x-5 bg-black' : 'translate-x-0 bg-neutral-400'
+                currentEnableHealthMetrics ? 'translate-x-5 bg-accent-fg' : 'translate-x-0 bg-neutral-400'
               }`}
             />
           </button>
@@ -687,9 +926,9 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {/* Acerca de RepLog */}
+      {/* Acerca de Kitaeru */}
       <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-3">
-        <h2 className="text-sm font-semibold text-white">Acerca de RepLog</h2>
+        <h2 className="text-sm font-semibold text-white">Acerca de Kitaeru</h2>
         <div className="space-y-2 text-xs text-neutral-400">
           <div className="flex justify-between py-1 border-b border-neutral-800">
             <span>Versión</span>

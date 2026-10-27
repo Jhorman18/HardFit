@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.replog.app',
-  appName: 'RepLog',
+  appName: 'Kitaeru',
   webDir: 'dist'
 };
 

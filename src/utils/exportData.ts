@@ -15,8 +15,11 @@ import type {
   Settings,
 } from '../types'
 
-export interface RepLogBackup {
-  app: 'RepLog'
+// Las copias hechas antes del cambio de nombre llevan app: 'RepLog' y se siguen aceptando
+const BACKUP_APP_IDS = ['Kitaeru', 'RepLog'] as const
+
+export interface KitaeruBackup {
+  app: 'Kitaeru'
   version: number
   exportedAt: string
   data: {
@@ -33,7 +36,7 @@ export interface RepLogBackup {
 /**
  * Recopila todas las tablas de Dexie para generar una copia de seguridad íntegra.
  */
-export async function buildBackup(): Promise<RepLogBackup> {
+export async function buildBackup(): Promise<KitaeruBackup> {
   const [exercises, folders, routines, workouts, measurements, settings, exerciseNotes] =
     await Promise.all([
       db.exercises.toArray(),
@@ -46,7 +49,7 @@ export async function buildBackup(): Promise<RepLogBackup> {
     ])
 
   return {
-    app: 'RepLog',
+    app: 'Kitaeru',
     version: 2,
     exportedAt: new Date().toISOString(),
     data: {
@@ -78,11 +81,11 @@ export async function importBackupFromText(
   if (
     !parsed ||
     typeof parsed !== 'object' ||
-    (parsed as { app?: unknown }).app !== 'RepLog' ||
+    !BACKUP_APP_IDS.includes((parsed as { app?: unknown }).app as (typeof BACKUP_APP_IDS)[number]) ||
     !(parsed as { data?: unknown }).data ||
     typeof (parsed as { data?: unknown }).data !== 'object'
   ) {
-    throw new Error('No es una copia de RepLog')
+    throw new Error('No es una copia de Kitaeru')
   }
 
   const data = (parsed as { data: Record<string, unknown> }).data
@@ -101,7 +104,7 @@ export async function importBackupFromText(
   const prev = await buildBackup()
   const dateStr = format(new Date(), 'yyyy-MM-dd')
   await downloadBlob(
-    `replog-backup-previo-${dateStr}.json`,
+    `kitaeru-backup-previo-${dateStr}.json`,
     'application/json',
     JSON.stringify(prev, null, 2)
   )
@@ -299,7 +302,7 @@ export async function exportJson(): Promise<void> {
   const backup = await buildBackup()
   const dateStr = format(new Date(), 'yyyy-MM-dd')
   const jsonContent = JSON.stringify(backup, null, 2)
-  await downloadBlob(`replog-backup-${dateStr}.json`, 'application/json', jsonContent)
+  await downloadBlob(`kitaeru-backup-${dateStr}.json`, 'application/json', jsonContent)
 }
 
 /**
@@ -391,7 +394,7 @@ export async function exportWorkoutsCsv(): Promise<void> {
 
   const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n')
   const dateStr = format(new Date(), 'yyyy-MM-dd')
-  await downloadBlob(`replog-entrenos-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
+  await downloadBlob(`kitaeru-entrenos-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
 }
 
 /**
@@ -414,5 +417,5 @@ export async function exportMeasurementsCsv(): Promise<void> {
 
   const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n')
   const dateStr = format(new Date(), 'yyyy-MM-dd')
-  await downloadBlob(`replog-medidas-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
+  await downloadBlob(`kitaeru-medidas-${dateStr}.csv`, 'text/csv;charset=utf-8', csvContent)
 }

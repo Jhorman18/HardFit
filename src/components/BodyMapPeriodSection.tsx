@@ -10,7 +10,7 @@ import {
 import { es } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight, Activity } from 'lucide-react'
 import type { Workout, Exercise } from '../types'
-import { musclesWorkedInPeriod, setsByMuscleGroup } from '../utils/stats'
+import { musclesWorkedInPeriod, setsByMuscleGroup, formatSetsCount } from '../utils/stats'
 import { useMuscleOverridesMap } from '../utils/effectiveMuscles'
 import { BodyMuscleChart } from './BodyMuscleChart'
 
@@ -173,7 +173,7 @@ export function BodyMapPeriodSection({
                 <span className="text-neutral-300 font-medium">Bajo</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#374151] border border-neutral-700/50 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-full bg-neutral-700 border border-neutral-700/50 inline-block" />
                 <span className="text-neutral-500">Sin series</span>
               </div>
             </div>
@@ -213,7 +213,7 @@ export function BodyMapPeriodSection({
                   </div>
 
                   <div className="col-span-5 text-right font-mono text-neutral-300">
-                    <strong className="text-white font-bold">{count}</strong>{' '}
+                    <strong className="text-white font-bold">{formatSetsCount(count)}</strong>{' '}
                     <span className="text-neutral-400 text-[11px]">
                       {count === 1 ? 'serie' : 'series'}
                     </span>{' '}
@@ -229,7 +229,7 @@ export function BodyMapPeriodSection({
                 Total
               </span>
               <span className="col-span-5 text-right font-mono text-xs">
-                {totalWeeklySets} {totalWeeklySets === 1 ? 'serie' : 'series'}
+                {formatSetsCount(totalWeeklySets)} {totalWeeklySets === 1 ? 'serie' : 'series'}
               </span>
             </div>
           </div>

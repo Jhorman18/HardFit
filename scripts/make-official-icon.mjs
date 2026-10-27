@@ -1,4 +1,4 @@
-// Genera el set de íconos de RepLog a partir del logo oficial SIN texto (brazo + mancuerna).
+// Genera el set de íconos de Kitaeru a partir del logo oficial SIN texto (brazo + mancuerna).
 // - PWA: public/icon-192, icon-512, icon-512-maskable, apple-touch-icon, favicon.png
 // - Fuentes para Android (@capacitor/assets): assets/icon.png, icon-foreground.png, icon-background.png
 import sharp from 'sharp'

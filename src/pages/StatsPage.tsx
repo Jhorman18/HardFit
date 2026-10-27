@@ -364,35 +364,35 @@ export function StatsPage() {
               <AreaChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="volGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#ffffff" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#ffffff" stopOpacity={0.0} />
+                    <stop offset="5%" stopColor="rgb(var(--accent))" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="rgb(var(--accent))" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--n-800))" vertical={false} />
                 <XAxis
                   dataKey="weekLabel"
-                  stroke="#737373"
+                  stroke="rgb(var(--n-500))"
                   fontSize={10}
                   tickLine={false}
-                  axisLine={{ stroke: '#404040' }}
+                  axisLine={{ stroke: 'rgb(var(--n-700))' }}
                 />
                 <YAxis
-                  stroke="#737373"
+                  stroke="rgb(var(--n-500))"
                   fontSize={10}
                   tickLine={false}
-                  axisLine={{ stroke: '#404040' }}
+                  axisLine={{ stroke: 'rgb(var(--n-700))' }}
                   tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val)}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0a0a0a',
-                    borderColor: '#262626',
+                    backgroundColor: 'rgb(var(--n-950))',
+                    borderColor: 'rgb(var(--n-800))',
                     borderRadius: '0.75rem',
-                    color: '#ffffff',
+                    color: 'rgb(var(--fg))',
                     fontSize: '12px',
                   }}
-                  itemStyle={{ color: '#ffffff' }}
-                  labelStyle={{ color: '#a3a3a3', fontWeight: 'bold' }}
+                  itemStyle={{ color: 'rgb(var(--fg))' }}
+                  labelStyle={{ color: 'rgb(var(--n-400))', fontWeight: 'bold' }}
                   formatter={(val: unknown) => [
                     `${Number(val ?? 0).toLocaleString()} ${unit}`,
                     'Volumen',
@@ -401,7 +401,7 @@ export function StatsPage() {
                 <Area
                   type="monotone"
                   dataKey="volume"
-                  stroke="#ffffff"
+                  stroke="rgb(var(--accent))"
                   strokeWidth={2}
                   fillOpacity={1}
                   fill="url(#volGradient)"
@@ -409,37 +409,37 @@ export function StatsPage() {
               </AreaChart>
             ) : (
               <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--n-800))" vertical={false} />
                 <XAxis
                   dataKey="weekLabel"
-                  stroke="#737373"
+                  stroke="rgb(var(--n-500))"
                   fontSize={10}
                   tickLine={false}
-                  axisLine={{ stroke: '#404040' }}
+                  axisLine={{ stroke: 'rgb(var(--n-700))' }}
                 />
                 <YAxis
-                  stroke="#737373"
+                  stroke="rgb(var(--n-500))"
                   fontSize={10}
                   tickLine={false}
-                  axisLine={{ stroke: '#404040' }}
+                  axisLine={{ stroke: 'rgb(var(--n-700))' }}
                   tickFormatter={(val) => (val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val)}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0a0a0a',
-                    borderColor: '#262626',
+                    backgroundColor: 'rgb(var(--n-950))',
+                    borderColor: 'rgb(var(--n-800))',
                     borderRadius: '0.75rem',
-                    color: '#ffffff',
+                    color: 'rgb(var(--fg))',
                     fontSize: '12px',
                   }}
-                  itemStyle={{ color: '#ffffff' }}
-                  labelStyle={{ color: '#a3a3a3', fontWeight: 'bold' }}
+                  itemStyle={{ color: 'rgb(var(--fg))' }}
+                  labelStyle={{ color: 'rgb(var(--n-400))', fontWeight: 'bold' }}
                   formatter={(val: unknown) => [
                     `${Number(val ?? 0).toLocaleString()} ${unit}`,
                     'Volumen',
                   ]}
                 />
-                <Bar dataKey="volume" fill="#ffffff" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="volume" fill="rgb(var(--accent))" radius={[4, 4, 0, 0]} />
               </BarChart>
             )}
           </ResponsiveContainer>
@@ -456,34 +456,34 @@ export function StatsPage() {
         <div className="w-full h-44 pt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--n-800))" vertical={false} />
               <XAxis
                 dataKey="weekLabel"
-                stroke="#737373"
+                stroke="rgb(var(--n-500))"
                 fontSize={10}
                 tickLine={false}
-                axisLine={{ stroke: '#404040' }}
+                axisLine={{ stroke: 'rgb(var(--n-700))' }}
               />
               <YAxis
                 allowDecimals={false}
-                stroke="#737373"
+                stroke="rgb(var(--n-500))"
                 fontSize={10}
                 tickLine={false}
-                axisLine={{ stroke: '#404040' }}
+                axisLine={{ stroke: 'rgb(var(--n-700))' }}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0a0a0a',
-                  borderColor: '#262626',
+                  backgroundColor: 'rgb(var(--n-950))',
+                  borderColor: 'rgb(var(--n-800))',
                   borderRadius: '0.75rem',
-                  color: '#ffffff',
+                  color: 'rgb(var(--fg))',
                   fontSize: '12px',
                 }}
-                itemStyle={{ color: '#ffffff' }}
-                labelStyle={{ color: '#a3a3a3', fontWeight: 'bold' }}
+                itemStyle={{ color: 'rgb(var(--fg))' }}
+                labelStyle={{ color: 'rgb(var(--n-400))', fontWeight: 'bold' }}
                 formatter={(val: unknown) => [`${val} entrenos`, 'Frecuencia']}
               />
-              <Bar dataKey="workoutsCount" fill="#a3a3a3" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="workoutsCount" fill="rgb(var(--n-400))" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -651,29 +651,29 @@ export function StatsPage() {
                   data={exerciseProgressData}
                   margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--n-800))" vertical={false} />
                   <XAxis
                     dataKey="formattedDate"
-                    stroke="#737373"
+                    stroke="rgb(var(--n-500))"
                     fontSize={10}
                     tickLine={false}
-                    axisLine={{ stroke: '#404040' }}
+                    axisLine={{ stroke: 'rgb(var(--n-700))' }}
                   />
                   <YAxis
-                    stroke="#737373"
+                    stroke="rgb(var(--n-500))"
                     fontSize={10}
                     tickLine={false}
-                    axisLine={{ stroke: '#404040' }}
+                    axisLine={{ stroke: 'rgb(var(--n-700))' }}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#0a0a0a',
-                      borderColor: '#262626',
+                      backgroundColor: 'rgb(var(--n-950))',
+                      borderColor: 'rgb(var(--n-800))',
                       borderRadius: '0.75rem',
-                      color: '#ffffff',
+                      color: 'rgb(var(--fg))',
                       fontSize: '12px',
                     }}
-                    labelStyle={{ color: '#a3a3a3', fontWeight: 'bold' }}
+                    labelStyle={{ color: 'rgb(var(--n-400))', fontWeight: 'bold' }}
                     formatter={(val: unknown) => [
                       `${val} ${
                         selectedMetric === 'reps' ? 'reps' : unit
@@ -690,9 +690,9 @@ export function StatsPage() {
                   <Line
                     type="monotone"
                     dataKey="value"
-                    stroke="#ffffff"
+                    stroke="rgb(var(--accent))"
                     strokeWidth={2.5}
-                    dot={{ fill: '#000000', stroke: '#ffffff', strokeWidth: 2, r: 4 }}
+                    dot={{ fill: 'rgb(var(--bg))', stroke: 'rgb(var(--accent))', strokeWidth: 2, r: 4 }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>

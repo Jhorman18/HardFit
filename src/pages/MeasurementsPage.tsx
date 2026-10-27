@@ -42,16 +42,16 @@ function generateId(): string {
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  bodyweight: '#ffffff',
-  bodyfat: '#ffffff',
-  chest: '#ffffff',
-  waist: '#ffffff',
-  hip: '#ffffff',
-  arm: '#ffffff',
-  thigh: '#ffffff',
-  calf: '#ffffff',
-  shoulders: '#ffffff',
-  neck: '#ffffff',
+  bodyweight: 'rgb(var(--accent))',
+  bodyfat: 'rgb(var(--accent))',
+  chest: 'rgb(var(--accent))',
+  waist: 'rgb(var(--accent))',
+  hip: 'rgb(var(--accent))',
+  arm: 'rgb(var(--accent))',
+  thigh: 'rgb(var(--accent))',
+  calf: 'rgb(var(--accent))',
+  shoulders: 'rgb(var(--accent))',
+  neck: 'rgb(var(--accent))',
 }
 
 export function MeasurementsPage() {
@@ -227,7 +227,7 @@ export function MeasurementsPage() {
     [chartType, weightUnit]
   )
 
-  const chartStroke = TYPE_COLORS[chartType] || '#ffffff'
+  const chartStroke = TYPE_COLORS[chartType] || 'rgb(var(--accent))'
 
   // Historial filtrado
   const filteredHistory = useMemo(() => {
@@ -577,30 +577,30 @@ export function MeasurementsPage() {
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--n-800))" vertical={false} />
                 <XAxis
                   dataKey="formattedDate"
-                  stroke="#737373"
+                  stroke="rgb(var(--n-500))"
                   fontSize={10}
                   tickLine={false}
-                  axisLine={{ stroke: '#404040' }}
+                  axisLine={{ stroke: 'rgb(var(--n-700))' }}
                 />
                 <YAxis
                   domain={[(dataMin: number) => Math.max(0, Math.floor(dataMin - 1)), (dataMax: number) => Math.ceil(dataMax + 1)]}
-                  stroke="#737373"
+                  stroke="rgb(var(--n-500))"
                   fontSize={10}
                   tickLine={false}
-                  axisLine={{ stroke: '#404040' }}
+                  axisLine={{ stroke: 'rgb(var(--n-700))' }}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0a0a0a',
-                    borderColor: '#262626',
+                    backgroundColor: 'rgb(var(--n-950))',
+                    borderColor: 'rgb(var(--n-800))',
                     borderRadius: '0.75rem',
-                    color: '#ffffff',
+                    color: 'rgb(var(--fg))',
                     fontSize: '12px',
                   }}
-                  labelStyle={{ color: '#a3a3a3', fontWeight: 'bold' }}
+                  labelStyle={{ color: 'rgb(var(--n-400))', fontWeight: 'bold' }}
                   formatter={(val: unknown) => [
                     `${val} ${chartData[0]?.unit || activeChartConfig.defaultUnit}`,
                     activeChartConfig.label,
@@ -615,7 +615,7 @@ export function MeasurementsPage() {
                   dataKey="value"
                   stroke={chartStroke}
                   strokeWidth={2.5}
-                  dot={{ fill: '#000000', stroke: chartStroke, strokeWidth: 2, r: 4 }}
+                  dot={{ fill: 'rgb(var(--bg))', stroke: chartStroke, strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>

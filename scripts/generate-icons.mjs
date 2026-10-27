@@ -104,7 +104,7 @@ function getSvg({ withBackground = true, maskable = false } = {}) {
 }
 
 async function main() {
-  console.log('Generating RepLog app icons...');
+  console.log('Generating Kitaeru app icons...');
 
   const svgStandard = getSvg({ withBackground: true, maskable: false });
   const svgMaskable = getSvg({ withBackground: true, maskable: true });

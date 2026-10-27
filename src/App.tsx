@@ -13,6 +13,7 @@ const ExercisesPage = lazy(() => import('./pages/ExercisesPage').then((m) => ({ 
 const StatsPage = lazy(() => import('./pages/StatsPage').then((m) => ({ default: m.StatsPage })))
 const MeasurementsPage = lazy(() => import('./pages/MeasurementsPage').then((m) => ({ default: m.MeasurementsPage })))
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then((m) => ({ default: m.SettingsPage })))
+const WorkoutSummaryPage = lazy(() => import('./pages/WorkoutSummaryPage').then((m) => ({ default: m.WorkoutSummaryPage })))
 
 function PageFallback() {
   return (
@@ -46,7 +47,7 @@ export function App() {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 text-center">
         <div className="w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-lg font-bold text-white">Iniciando RepLog...</h2>
+        <h2 className="text-lg font-bold text-white">Iniciando Kitaeru...</h2>
         <p className="text-xs text-neutral-400 mt-1">Cargando base de datos local</p>
       </div>
     )
@@ -69,6 +70,7 @@ export function App() {
               <Route path="stats" element={<StatsPage />} />
               <Route path="measurements" element={<MeasurementsPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="workout/summary/:id" element={<WorkoutSummaryPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

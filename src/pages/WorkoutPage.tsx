@@ -149,8 +149,12 @@ export function WorkoutPage() {
 
   const handleFinish = async () => {
     try {
-      await finishWorkout()
-      navigate('/')
+      const w = await finishWorkout()
+      if (w && w.id) {
+        navigate(`/workout/summary/${w.id}`, { replace: true })
+      } else {
+        navigate('/')
+      }
     } catch (err) {
       console.error('Error al terminar entrenamiento:', err)
     }

@@ -12,8 +12,8 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png', 'icon-512-maskable.png'],
       manifest: {
-        name: 'RepLog',
-        short_name: 'RepLog',
+        name: 'Kitaeru',
+        short_name: 'Kitaeru',
         description: 'Registro de entrenamiento personal y seguimiento de progreso offline-first',
         lang: 'es',
         theme_color: '#0b0f14',

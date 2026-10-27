@@ -16,6 +16,7 @@ import {
   radarByRegion,
   periodSummary,
   setsByMuscleGroup,
+  formatSetsCount,
   type RadarAxis,
 } from '../utils/stats'
 import { useMuscleOverridesMap } from '../utils/effectiveMuscles'
@@ -180,30 +181,32 @@ export function RadarStatsSection({
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData} outerRadius="75%">
-              <PolarGrid stroke="#262626" />
+              <PolarGrid stroke="rgb(var(--n-800))" />
               <PolarAngleAxis
                 dataKey="region"
-                stroke="#a3a3a3"
-                tick={{ fill: '#e5e5e5', fontSize: 11, fontWeight: 600 }}
+                stroke="rgb(var(--n-400))"
+                tick={{ fill: 'rgb(var(--n-200))', fontSize: 11, fontWeight: 600 }}
               />
               <PolarRadiusAxis
-                stroke="#404040"
-                tick={{ fill: '#737373', fontSize: 9 }}
-                allowDecimals={false}
+                stroke="rgb(var(--n-700))"
+                tick={{ fill: 'rgb(var(--n-500))', fontSize: 9 }}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0a0a0a',
-                  borderColor: '#262626',
+                  backgroundColor: 'rgb(var(--n-950))',
+                  borderColor: 'rgb(var(--n-800))',
                   borderRadius: '0.75rem',
-                  color: '#ffffff',
+                  color: 'rgb(var(--fg))',
                   fontSize: '12px',
                 }}
-                labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
-                formatter={(val: unknown, name: unknown) => [
-                  `${val} series`,
-                  String(name),
-                ]}
+                labelStyle={{ color: 'rgb(var(--fg))', fontWeight: 'bold' }}
+                formatter={(val: unknown, name: unknown) => {
+                  const num = typeof val === 'number' ? val : Number(val) || 0
+                  return [
+                    `${formatSetsCount(num)} ${num === 1 ? 'serie' : 'series'}`,
+                    String(name),
+                  ]
+                }}
               />
               <Legend
                 wrapperStyle={{ paddingTop: '8px', fontSize: '11px' }}
@@ -327,7 +330,7 @@ export function RadarStatsSection({
               >
                 <span className="font-semibold text-neutral-300 truncate pr-1">{group}</span>
                 <span className="font-mono text-white font-bold shrink-0">
-                  {count} <span className="text-[10px] text-neutral-500 font-normal">series</span>
+                  {formatSetsCount(count)} <span className="text-[10px] text-neutral-500 font-normal">{count === 1 ? 'serie' : 'series'}</span>
                 </span>
               </div>
             ))}

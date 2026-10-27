@@ -114,7 +114,7 @@ export function HomePage() {
             Unidades: <strong className="text-white uppercase">{unit}</strong>
           </span>
         </div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">Bienvenido a RepLog</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Bienvenido a Kitaeru</h1>
         <p className="text-sm text-neutral-400 mt-1">
           Tu diario de entrenamiento 100% privado y local. Sin registro ni servidores externos.
         </p>
@@ -279,7 +279,7 @@ export function HomePage() {
               <Play size={20} fill="currentColor" className="text-black" />
               <div>
                 <div className="text-sm font-bold text-black">Iniciar Entrenamiento Libre</div>
-                <div className="text-xs text-neutral-700">Comienza a registrar series y pesos</div>
+                <div className="text-xs text-black/80">Comienza a registrar series y pesos</div>
               </div>
             </div>
             <ChevronRight size={18} className="text-black" />

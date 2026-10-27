@@ -22,11 +22,11 @@ export const BODY_STRUCTURE_SLUGS = new Set<HighlighterSlug>([
 ])
 
 /**
- * Colores base para tema oscuro (fondo negro RepLog).
+ * Colores base para mapa corporal adaptativos al tema.
  */
-export const COLOR_STRUCTURE_HAIR = '#1e293b' // Pelo en tono pizarra oscuro definido
-export const COLOR_STRUCTURE = '#4b5563'      // Cabeza, manos, pies, rodillas (neutral-600)
-export const COLOR_INACTIVE = '#374151'       // Músculo sin trabajo visible sobre negro (neutral-700)
+export const COLOR_STRUCTURE_HAIR = 'rgb(var(--n-500))'
+export const COLOR_STRUCTURE = 'rgb(var(--n-600))'      // Cabeza, manos, pies, rodillas
+export const COLOR_INACTIVE = 'rgb(var(--n-700))'       // Músculo sin trabajo visible
 export const COLOR_PRIMARY = '#ef4444'        // Músculo primario (rojo)
 export const COLOR_SECONDARY = '#f97316'      // Músculo secundario (naranja)
 

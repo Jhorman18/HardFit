@@ -704,6 +704,16 @@ export function HistoryPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => navigate(`/workout/summary/${selectedWorkout.id}`)}
+              className="text-xs text-white hover:text-neutral-200 transition bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-semibold"
+              title="Ver resumen de este entrenamiento"
+            >
+              <Trophy size={13} className="text-amber-400" />
+              <span>Ver resumen</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleStartEdit}
               className="text-xs text-white hover:text-neutral-200 transition bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 px-3 py-1.5 rounded-xl flex items-center gap-1.5 font-semibold"
               title="Editar este entrenamiento"
