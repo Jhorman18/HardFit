@@ -1,4 +1,4 @@
-# RepLog — Registro de Entrenamiento Personal
+# Kitaeru — Registro de Entrenamiento Personal
 
 Aplicación **web (PWA)** y **Android (Capacitor)** para llevar el seguimiento de rutinas de fuerza,
 entrenamientos, medidas corporales, estadísticas de progreso y temporizador de descanso.
