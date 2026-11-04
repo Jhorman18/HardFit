@@ -1,4 +1,6 @@
+import type { WeightUnit } from './utils/weightUnits'
 import type { MuscleKey } from './data/exerciseMedia'
+import type { ExerciseFocusId } from './data/exerciseFocus'
 
 export type ExerciseType =
   | 'weight_reps'
@@ -24,6 +26,7 @@ export interface Folder {
 }
 
 export interface RoutineItemTargetSet {
+  weightUnit?: WeightUnit
   reps?: number
   weight?: number
   rpe?: number
@@ -32,12 +35,16 @@ export interface RoutineItemTargetSet {
 }
 
 export interface RoutineItem {
+  weightUnit?: WeightUnit
+  restSeconds?: number
   exerciseId: string
   order: number
   targetSets: RoutineItemTargetSet[]
 }
 
 export interface Routine {
+  weightUnit?: WeightUnit
+  restSeconds?: number
   id: string
   name: string
   folderId: string | null
@@ -48,6 +55,7 @@ export interface Routine {
 export type SetType = 'normal' | 'warmup' | string
 
 export interface WorkoutSetEntry {
+  weightUnit?: WeightUnit
   type: SetType
   weight?: number
   reps?: number
@@ -58,12 +66,15 @@ export interface WorkoutSetEntry {
 }
 
 export interface WorkoutEntry {
+  weightUnit?: WeightUnit
   exerciseId: string
   sets: WorkoutSetEntry[]
   restSeconds?: number
 }
 
 export interface Workout {
+  weightUnit?: WeightUnit
+  updatedAt?: number
   id: string
   name: string
   startedAt: number
@@ -97,7 +108,8 @@ export interface Measurement {
 
 export interface Settings {
   id: 'app'
-  units: 'kg' | 'lb'
+  units: WeightUnit
+  legacyWeightUnit?: WeightUnit
   restSeconds?: number
   showRpe?: boolean
   createdAt: number
@@ -132,5 +144,7 @@ export interface ExerciseNote {
 
 export interface MuscleOverride {
   exerciseId: string
+  focus?: ExerciseFocusId
+  /** Los demás ejercicios conservan sus exclusiones originales. */
   disabled: MuscleKey[]
 }

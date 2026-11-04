@@ -1,3 +1,4 @@
+import { inputWeight, asWeightUnit, convertSetWeight, displayWeight, weightInKg } from '../utils/weightUnits'
 import { useMemo } from 'react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -22,6 +23,8 @@ function formatSetPerformance(
   exerciseType: ExerciseType,
   unit: string
 ): string {
+  const converted = convertSetWeight(set, asWeightUnit(unit))
+  set = { ...converted, weight: converted.weight === undefined ? undefined : Number(inputWeight(converted.weight)) }
   switch (exerciseType) {
     case 'weight_reps':
       return `${set.weight ?? 0} ${unit} × ${set.reps ?? 0} reps`
@@ -89,7 +92,7 @@ export function ExerciseHistoryTab({
       for (const entry of matchingEntries) {
         for (const s of entry.sets) {
           if (isValidSet(s)) {
-            const wVal = Math.max(0, s.weight || 0)
+            const wVal = Math.max(0, weightInKg(s))
             const rVal = Math.max(0, s.reps || 0)
 
             const effectiveWeight =
@@ -137,7 +140,7 @@ export function ExerciseHistoryTab({
             Peso Máx.
           </span>
           <span className="text-sm font-bold text-white">
-            {allTimePR.maxWeight > 0 ? `${allTimePR.maxWeight} ${unit}` : '-'}
+            {allTimePR.maxWeight > 0 ? `${displayWeight(allTimePR.maxWeight, unit)} ${unit}` : '-'}
           </span>
         </div>
 
@@ -149,7 +152,7 @@ export function ExerciseHistoryTab({
             {allTimePR.maxEst1RM > 0 ? (
               <>
                 <Trophy size={12} className="text-white shrink-0" />
-                <span>{allTimePR.maxEst1RM} {unit}</span>
+                <span>{displayWeight(allTimePR.maxEst1RM, unit)} {unit}</span>
               </>
             ) : (
               '-'

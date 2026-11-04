@@ -1,3 +1,4 @@
+import { getExerciseFocusDefinition, resolveExerciseFocus } from '../data/exerciseFocus'
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db/db'
@@ -69,6 +70,11 @@ export function getEffectiveMedia(
     } else if ('exerciseId' in overrides && 'disabled' in overrides) {
       override = overrides.exerciseId === exerciseId ? overrides : undefined
     }
+  }
+
+  // Solo las dos prensas solicitadas usan dominancia; el resto mantiene sus checkboxes.
+  if (getExerciseFocusDefinition(exerciseId)) {
+    return resolveExerciseFocus(exerciseId, base, override?.focus)
   }
 
   const disabledSet = new Set(override?.disabled || [])

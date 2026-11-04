@@ -1,3 +1,4 @@
+import { displayWeight, weightInKg, getLatestBodyweightKg, getEntryWeightUnit, convertSetWeight, inputWeight } from '../utils/weightUnits'
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -67,13 +68,7 @@ export function WorkoutSummaryPage() {
 
   const unit = (settings && 'units' in settings && settings.units) || 'kg'
 
-  const latestBodyweight = useMemo(() => {
-    if (!measurements) return 0
-    const bwList = measurements
-      .filter((m) => m.type === 'bodyweight')
-      .sort((a, b) => b.date - a.date)
-    return bwList.length > 0 ? bwList[0].value : 0
-  }, [measurements])
+  const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
 
   const exerciseMap = useMemo(() => {
     if (!exercises) return new Map<string, Exercise>()
@@ -210,7 +205,7 @@ export function WorkoutSummaryPage() {
       : equivalent.weightKg.toLocaleString('es-ES')
     : ''
 
-  const totalVolFormatted = summary.totalVolumeKg.toLocaleString('es-ES')
+  const totalVolFormatted = displayWeight(summary.totalVolumeKg, unit).toLocaleString('es-ES')
 
   const eqSubtitle = equivalent
     ? `Volumen total: ${totalVolFormatted} ${unit} · ${getEquivalentArticle(equivalent.name)} ${equivalent.name} pesa ~${objWeightFormatted} ${unit}`
@@ -253,7 +248,7 @@ export function WorkoutSummaryPage() {
               <Weight size={14} className="text-neutral-400" />
             </div>
             <div className="mt-1 text-xl font-extrabold text-white">
-              {summary.totalVolumeKg.toLocaleString()}{' '}
+              {displayWeight(summary.totalVolumeKg, unit).toLocaleString()}{' '}
               <span className="text-xs font-normal text-neutral-400">{unit}</span>
             </div>
           </div>
@@ -310,7 +305,7 @@ export function WorkoutSummaryPage() {
                 const exName = ex?.name || rec.exerciseId
                 const weightStr =
                   rec.weight !== undefined && rec.weight !== null
-                    ? `${rec.weight} ${unit}`
+                    ? `${displayWeight(rec.weight, unit)} ${unit}`
                     : `0 ${unit}`
                 const repsStr = `${rec.reps ?? 0} reps`
 
@@ -352,6 +347,7 @@ export function WorkoutSummaryPage() {
 
           <div className="space-y-2">
             {(workout.entries || []).map((entry, idx) => {
+              const unit = getEntryWeightUnit(workout, entry)
               const validSets = (entry.sets || []).filter(isValidSet)
               if (validSets.length === 0) return null
 
@@ -363,7 +359,7 @@ export function WorkoutSummaryPage() {
               let bestScore = -1
 
               for (const s of validSets) {
-                const w = s.weight || 0
+                const w = weightInKg(s)
                 const r = s.reps || 0
                 const score = estimated1RM(w, r)
                 if (score > bestScore) {
@@ -374,7 +370,7 @@ export function WorkoutSummaryPage() {
 
               const bestWeightStr =
                 bestSet && bestSet.weight !== undefined && bestSet.weight !== null
-                  ? `${bestSet.weight} ${unit}`
+                  ? `${inputWeight(convertSetWeight(bestSet, unit).weight)} ${unit}`
                   : `0 ${unit}`
 
               return (

@@ -1,3 +1,4 @@
+import { convertWeight, displayWeight, getLatestBodyweightKg } from '../utils/weightUnits'
 import { useState, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -69,13 +70,7 @@ export function StatsPage() {
   const unit = (settings && 'units' in settings && settings.units) || 'kg'
 
   // Obtener el peso corporal más reciente de la tabla de medidas
-  const latestBodyweight = useMemo(() => {
-    if (!measurements) return 0
-    const bwList = measurements
-      .filter((m) => m.type === 'bodyweight')
-      .sort((a, b) => b.date - a.date)
-    return bwList.length > 0 ? bwList[0].value : 0
-  }, [measurements])
+  const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
 
   const exerciseMap = useMemo(() => {
     const map = new Map<string, Exercise>()
@@ -133,18 +128,18 @@ export function StatsPage() {
   const currentStreak = useMemo(() => (workouts ? weeklyStreak(workouts) : 0), [workouts])
   const totalWorkoutsCount = workouts ? workouts.length : 0
   const accumulatedVolume = useMemo(
-    () => (workouts ? totalVolume(workouts, exerciseMap, latestBodyweight) : 0),
-    [workouts, exerciseMap, latestBodyweight]
+    () => (workouts ? displayWeight(totalVolume(workouts, exerciseMap, latestBodyweight), unit) : 0),
+    [workouts, exerciseMap, latestBodyweight, unit]
   )
   const currentWeekVol = useMemo(
-    () => (workouts ? thisWeekVolume(workouts, exerciseMap, latestBodyweight) : 0),
-    [workouts, exerciseMap, latestBodyweight]
+    () => (workouts ? displayWeight(thisWeekVolume(workouts, exerciseMap, latestBodyweight), unit) : 0),
+    [workouts, exerciseMap, latestBodyweight, unit]
   )
 
   // Gráfica semanal: volumen y entrenos (últimas 12 semanas)
   const weeklyData = useMemo(
-    () => (workouts ? weeklyHistory(workouts, exerciseMap, 12, latestBodyweight) : []),
-    [workouts, exerciseMap, latestBodyweight]
+    () => (workouts ? weeklyHistory(workouts, exerciseMap, 12, latestBodyweight).map(point => ({ ...point, volume: displayWeight(point.volume, unit) })) : []),
+    [workouts, exerciseMap, latestBodyweight, unit]
   )
 
   // Récords personales del ejercicio activo
@@ -162,8 +157,8 @@ export function StatsPage() {
       selectedMetric,
       exerciseMap,
       latestBodyweight
-    )
-  }, [workouts, activeExerciseId, selectedMetric, exerciseMap, latestBodyweight])
+    ).map(point => ({ ...point, value: selectedMetric === 'reps' ? point.value : displayWeight(point.value, unit) }))
+  }, [workouts, activeExerciseId, selectedMetric, exerciseMap, latestBodyweight, unit])
 
   const hasAnyData = totalWorkoutsCount > 0
 
@@ -221,7 +216,7 @@ export function StatsPage() {
           <span className="text-neutral-400">
             Peso corporal de referencia:{' '}
             <strong className="text-white">
-              {latestBodyweight > 0 ? `${latestBodyweight} ${unit}` : '0 kg'}
+              {latestBodyweight > 0 ? `${displayWeight(latestBodyweight, unit)} ${unit}` : '0 kg'}
             </strong>
             {latestBodyweight === 0 && (
               <span className="text-[11px] text-neutral-500 ml-1">
@@ -298,7 +293,7 @@ export function StatsPage() {
       {/* MÉTRICAS DE SALUD (IMC, TMB, TDEE) */}
       <HealthMetricsSection
         settings={settings && 'units' in settings ? settings : undefined}
-        latestBodyweight={latestBodyweight}
+        latestBodyweight={convertWeight(latestBodyweight, 'kg', unit)}
       />
 
       {/* ESTADO VACÍO SI NO HAY ENTRENOS */}
@@ -541,7 +536,7 @@ export function StatsPage() {
                 Peso Máximo
               </span>
               <span className="text-lg font-extrabold text-white">
-                {activePRs.maxWeight > 0 ? `${activePRs.maxWeight} ${unit}` : '-'}
+                {activePRs.maxWeight > 0 ? `${displayWeight(activePRs.maxWeight, unit)} ${unit}` : '-'}
               </span>
             </div>
 
@@ -553,7 +548,7 @@ export function StatsPage() {
                 {activePRs.maxEst1RM > 0 ? (
                   <>
                     <Trophy size={14} className="text-white" />
-                    <span>{activePRs.maxEst1RM} {unit}</span>
+                    <span>{displayWeight(activePRs.maxEst1RM, unit)} {unit}</span>
                   </>
                 ) : (
                   '-'
@@ -575,7 +570,7 @@ export function StatsPage() {
                 Volumen Máx. Serie
               </span>
               <span className="text-lg font-extrabold text-white">
-                {activePRs.maxVolumeSet > 0 ? `${activePRs.maxVolumeSet} ${unit}` : '-'}
+                {activePRs.maxVolumeSet > 0 ? `${displayWeight(activePRs.maxVolumeSet, unit)} ${unit}` : '-'}
               </span>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { asWeightUnit, stampWorkoutWeightUnits, stampRoutineWeightUnits } from '../utils/weightUnits'
 import { db } from '../db'
 import { supabase, isCloudConfigured } from '../lib/supabase'
 import type { Exercise, Folder, Routine, Workout, Measurement, Settings } from '../types'
@@ -176,12 +177,18 @@ export async function applyRemoteToLocal(
     case 'folders':
       await db.folders.put(data as Folder)
       break
-    case 'routines':
-      await db.routines.put(data as Routine)
+    case 'routines': {
+      const app = await db.settings.get('app')
+      const legacyUnit = app && 'units' in app ? asWeightUnit(app.legacyWeightUnit ?? app.units) : 'kg'
+      await db.routines.put(stampRoutineWeightUnits(data as Routine, legacyUnit))
       break
-    case 'workouts':
-      await db.workouts.put(data as Workout)
+    }
+    case 'workouts': {
+      const app = await db.settings.get('app')
+      const legacyUnit = app && 'units' in app ? asWeightUnit(app.legacyWeightUnit ?? app.units) : 'kg'
+      await db.workouts.put(stampWorkoutWeightUnits(data as Workout, legacyUnit))
       break
+    }
     case 'measurements':
       await db.measurements.put(data as Measurement)
       break

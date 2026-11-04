@@ -1,3 +1,4 @@
+import { asWeightUnit, stampWorkoutWeightUnits, stampRoutineWeightUnits } from './weightUnits'
 import { format } from 'date-fns'
 import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
@@ -12,6 +13,7 @@ import type {
   Measurement,
   SettingsRecord,
   ExerciseNote,
+  MuscleOverride,
   Settings,
 } from '../types'
 
@@ -30,6 +32,7 @@ export interface KitaeruBackup {
     measurements: Measurement[]
     settings: SettingsRecord[]
     exerciseNotes: ExerciseNote[]
+    muscleOverrides: MuscleOverride[]
   }
 }
 
@@ -37,7 +40,7 @@ export interface KitaeruBackup {
  * Recopila todas las tablas de Dexie para generar una copia de seguridad íntegra.
  */
 export async function buildBackup(): Promise<KitaeruBackup> {
-  const [exercises, folders, routines, workouts, measurements, settings, exerciseNotes] =
+  const [exercises, folders, routines, workouts, measurements, settings, exerciseNotes, muscleOverrides] =
     await Promise.all([
       db.exercises.toArray(),
       db.folders.toArray(),
@@ -46,11 +49,12 @@ export async function buildBackup(): Promise<KitaeruBackup> {
       db.measurements.toArray(),
       db.settings.toArray(),
       db.exerciseNotes.toArray(),
+      db.muscleOverrides.toArray(),
     ])
 
   return {
     app: 'Kitaeru',
-    version: 2,
+    version: 4,
     exportedAt: new Date().toISOString(),
     data: {
       exercises,
@@ -60,6 +64,7 @@ export async function buildBackup(): Promise<KitaeruBackup> {
       measurements,
       settings,
       exerciseNotes,
+      muscleOverrides,
     },
   }
 }
@@ -99,6 +104,9 @@ export async function importBackupFromText(
   const exerciseNotes = Array.isArray(data.exerciseNotes)
     ? (data.exerciseNotes as ExerciseNote[])
     : []
+
+  const hasMuscleOverrides = Array.isArray(data.muscleOverrides)
+  const muscleOverrides = hasMuscleOverrides ? (data.muscleOverrides as MuscleOverride[]) : []
 
   // SEGURIDAD: antes de sobrescribir, descargar copia del estado actual
   const prev = await buildBackup()
@@ -141,9 +149,19 @@ export async function importBackupFromText(
     }
   }
 
+  const importedApp = finalSettings.find((record): record is Settings => record.id === 'app')
+  const legacyUnit = asWeightUnit(importedApp?.legacyWeightUnit ?? importedApp?.units)
+  const normalizedRoutines = routines.map(routine => stampRoutineWeightUnits(routine, legacyUnit))
+  const normalizedWorkouts = workouts.map(workout => stampWorkoutWeightUnits(workout, legacyUnit))
+  for (let index = 0; index < finalSettings.length; index++) {
+    const record = finalSettings[index]
+    if (record.id === 'active_workout') finalSettings[index] = { ...record, workout: stampWorkoutWeightUnits(record.workout, legacyUnit) }
+    else finalSettings[index] = { ...record, legacyWeightUnit: record.legacyWeightUnit ?? legacyUnit }
+  }
+
   const hasCatalog = exercises.some((e) => !e.isCustom)
 
-  // Transacción atómica Dexie rw sobre las 7 tablas de datos (sin tocar syncMeta)
+  // Transacción atómica Dexie rw sobre las 8 tablas de datos (sin tocar syncMeta)
   await db.transaction(
     'rw',
     [
@@ -154,6 +172,7 @@ export async function importBackupFromText(
       db.measurements,
       db.settings,
       db.exerciseNotes,
+      db.muscleOverrides,
     ],
     async () => {
       await db.exercises.clear()
@@ -175,12 +194,12 @@ export async function importBackupFromText(
 
       await db.routines.clear()
       if (routines.length > 0) {
-        await db.routines.bulkPut(routines)
+        await db.routines.bulkPut(normalizedRoutines)
       }
 
       await db.workouts.clear()
       if (workouts.length > 0) {
-        await db.workouts.bulkPut(workouts)
+        await db.workouts.bulkPut(normalizedWorkouts)
       }
 
       await db.measurements.clear()
@@ -197,8 +216,23 @@ export async function importBackupFromText(
       if (exerciseNotes.length > 0) {
         await db.exerciseNotes.bulkPut(exerciseNotes)
       }
+
+      // Los backups anteriores a v3 no contienen preferencias de enfoque.
+      if (hasMuscleOverrides) {
+        await db.muscleOverrides.clear()
+        if (muscleOverrides.length > 0) {
+          await db.muscleOverrides.bulkPut(muscleOverrides)
+        }
+      }
     }
   )
+
+  // Una importaci?n expl?cita sustituye tambi?n el cache de la sesi?n activa.
+  if (typeof window !== 'undefined') {
+    const active = finalSettings.find(record => record.id === 'active_workout')
+    if (active && active.id === 'active_workout') localStorage.setItem('replog_active_workout', JSON.stringify(active.workout))
+    else localStorage.removeItem('replog_active_workout')
+  }
 
   return {
     counts: {
@@ -209,6 +243,7 @@ export async function importBackupFromText(
       measurements: measurements.length,
       settings: finalSettings.length,
       exerciseNotes: exerciseNotes.length,
+      muscleOverrides: muscleOverrides.length,
     },
   }
 }
@@ -326,6 +361,7 @@ export async function exportWorkoutsCsv(): Promise<void> {
     'serie',
     'tipo',
     'peso',
+    'unidad_peso',
     'reps',
     'rpe',
     'duracion_seg',
@@ -379,6 +415,7 @@ export async function exportWorkoutsCsv(): Promise<void> {
           escapeCsvCell(serieNum),
           escapeCsvCell(tipoSerie),
           escapeCsvCell(peso),
+          escapeCsvCell(set.weightUnit ?? entry.weightUnit ?? workout.weightUnit ?? 'kg'),
           escapeCsvCell(reps),
           escapeCsvCell(rpe),
           escapeCsvCell(duracion),

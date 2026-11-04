@@ -1,3 +1,6 @@
+import { RestPicker } from '../components/RestPicker'
+import { formatRest } from '../utils/formatRest'
+import { asWeightUnit, convertSetWeight, changeRoutineItemWeightUnit, inputWeight, type WeightUnit } from '../utils/weightUnits'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -36,6 +39,9 @@ export function RoutineEditorPage() {
   const [name, setName] = useState('')
   const [folderId, setFolderId] = useState<string>(() => searchParams.get('folderId') || '')
   const [items, setItems] = useState<RoutineItem[]>([])
+  const [routineUnit, setRoutineUnit] = useState<WeightUnit | null>(null)
+  const [routineRest, setRoutineRest] = useState<number | undefined>()
+  const [picker, setPicker] = useState<'global' | number | null>(null)
   const [existingOrder, setExistingOrder] = useState<number>(0)
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const [replacingItemIndex, setReplacingItemIndex] = useState<number | null>(null)
@@ -46,7 +52,9 @@ export function RoutineEditorPage() {
   const folders = useLiveQuery(() => db.folders.orderBy('order').toArray(), [])
   const exercises = useLiveQuery(() => db.exercises.toArray(), [])
   const settings = useLiveQuery(() => db.settings.get('app'), [])
-  const unit = (settings && 'units' in settings && settings.units) || 'kg'
+  const appUnit = (settings && 'units' in settings && settings.units) || 'kg'
+  const unit = routineUnit ?? appUnit
+  const defaultRest = settings && 'restSeconds' in settings ? settings.restSeconds ?? 120 : 120
 
   const exerciseMap = useMemo(() => {
     const map = new Map<string, Exercise>()
@@ -67,6 +75,8 @@ export function RoutineEditorPage() {
       if (!isMounted) return
       if (routine) {
         setName(routine.name)
+        setRoutineUnit(asWeightUnit(routine.weightUnit))
+        setRoutineRest(routine.restSeconds)
         setFolderId(routine.folderId ?? '')
         setExistingOrder(routine.order)
         const sorted = [...(routine.items || [])].sort((a, b) => a.order - b.order)
@@ -83,6 +93,7 @@ export function RoutineEditorPage() {
   }, [id, navigate])
 
   const handleAddExercises = (exerciseIds: string[]) => {
+    setRoutineUnit(previous => previous ?? unit)
     if (replacingItemIndex !== null) {
       if (exerciseIds.length > 0) {
         setItems((prev) =>
@@ -179,7 +190,7 @@ export function RoutineEditorPage() {
         if (idx !== itemIndex) return item
         const updatedSets = item.targetSets.map((s, sIdx) => {
           if (sIdx !== setIndex) return s
-          return { ...s, ...patch }
+          return { ...s, ...patch, ...('weight' in patch ? { weightUnit: item.weightUnit ?? unit } : {}) }
         })
         return { ...item, targetSets: updatedSets }
       })
@@ -202,14 +213,19 @@ export function RoutineEditorPage() {
     const routineToSave: Routine = {
       id: id || generateId(),
       name: trimmedName,
+      weightUnit: unit,
+      restSeconds: routineRest,
       folderId: folderId.trim() ? folderId.trim() : null,
       order: isEditing ? existingOrder : Date.now(),
       items: items.map((it, idx) => ({
         exerciseId: it.exerciseId,
+        weightUnit: it.weightUnit,
+        restSeconds: it.restSeconds,
         order: idx,
         targetSets:
           it.targetSets.length > 0
             ? it.targetSets.map((ts) => ({
+                weightUnit: ts.weightUnit ?? it.weightUnit ?? unit,
                 weight: ts.weight !== undefined && !isNaN(ts.weight) ? ts.weight : undefined,
                 reps: ts.reps !== undefined && !isNaN(ts.reps) ? ts.reps : undefined,
                 rpe: ts.rpe !== undefined && !isNaN(ts.rpe) ? ts.rpe : undefined,
@@ -319,6 +335,10 @@ export function RoutineEditorPage() {
         </div>
       </div>
 
+      <button type="button" onClick={() => setPicker('global')} aria-label="Configurar descanso y unidad global" className="px-3 py-2 rounded-xl border border-neutral-800 bg-neutral-900 text-xs text-neutral-300">
+        Descanso: {formatRest(routineRest ?? defaultRest)} · {unit}
+      </button>
+
       {/* Lista de Ejercicios */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -353,6 +373,7 @@ export function RoutineEditorPage() {
             {items.map((item, itemIdx) => {
               const exercise = exerciseMap.get(item.exerciseId)
               const exType = exercise?.type ?? 'weight_reps'
+              const unit = item.weightUnit ?? routineUnit ?? appUnit
 
               return (
                 <div
@@ -440,6 +461,11 @@ export function RoutineEditorPage() {
                       </button>
                     </div>
                   </div>
+
+                  <button type="button" onClick={() => setPicker(itemIdx)} aria-label={'Configurar descanso y unidad de ' + (exercise?.name ?? 'ejercicio')} className="mx-3 mt-2 px-3 py-1.5 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300">
+                    Descanso: {formatRest(item.restSeconds ?? routineRest ?? defaultRest)}
+                    {exType !== 'duration' && exType !== 'distance' && <> · {unit}</>}
+                  </button>
 
                   {/* Tabla de Series Objetivo */}
                   <div className="p-3 overflow-x-auto">
@@ -529,9 +555,9 @@ export function RoutineEditorPage() {
                                   <input
                                     type="number"
                                     min="0"
-                                    step="0.5"
+                                    step="any"
                                     placeholder="0"
-                                    value={ts.weight ?? ''}
+                                    value={inputWeight(convertSetWeight(ts, unit).weight)}
                                     onChange={(e) =>
                                       handleUpdateTargetSet(itemIdx, sIdx, {
                                         weight:
@@ -639,6 +665,44 @@ export function RoutineEditorPage() {
           <span>Guardar rutina</span>
         </button>
       </div>
+
+      {picker !== null && (
+        <RestPicker
+          isOpen
+          title={picker === 'global' ? 'Descanso y unidad global' : (exerciseMap.get(items[picker].exerciseId)?.name ?? 'Ejercicio')}
+          currentSeconds={picker === 'global' ? routineRest ?? defaultRest : items[picker].restSeconds ?? routineRest ?? defaultRest}
+          allowGlobal={picker !== 'global'}
+          currentWeightUnit={picker === 'global' ? unit : ['duration', 'distance'].includes(exerciseMap.get(items[picker].exerciseId)?.type ?? '') ? undefined : items[picker].weightUnit ?? unit}
+          globalWeightUnit={unit}
+          weightUnitOverride={picker === 'global' ? undefined : items[picker].weightUnit}
+          onWeightUnitChange={(selected) => {
+            if (picker === 'global') {
+              const next = selected ?? appUnit
+              setItems(prev => prev.map(item => {
+                if (item.weightUnit || ['duration', 'distance'].includes(exerciseMap.get(item.exerciseId)?.type ?? '')) return item
+                const converted = changeRoutineItemWeightUnit(item, unit, next)
+                const { weightUnit: _unit, ...inherited } = converted
+                return inherited
+              }))
+              setRoutineUnit(next)
+            } else {
+              setItems(prev => prev.map((item,index) => index === picker ? changeRoutineItemWeightUnit(item, unit, selected) : item))
+            }
+          }}
+          onSelect={(seconds) => {
+            if (picker === 'global') setRoutineRest(seconds)
+            else setItems(prev => prev.map((item,index) => index === picker ? { ...item, restSeconds: seconds } : item))
+          }}
+          onUseGlobal={() => {
+            if (picker !== 'global') setItems(prev => prev.map((item,index) => {
+              if (index !== picker) return item
+              const { restSeconds: _rest, ...remaining } = item
+              return remaining
+            }))
+          }}
+          onClose={() => setPicker(null)}
+        />
+      )}
 
       {/* Selector modal reutilizado */}
       <ExerciseSelectorModal

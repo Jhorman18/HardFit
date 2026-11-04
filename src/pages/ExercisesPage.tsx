@@ -1,3 +1,6 @@
+import { getLatestBodyweightKg } from '../utils/weightUnits'
+import { ExerciseFocusSelector } from '../components/ExerciseFocusSelector'
+import { getExerciseFocusDefinition, getExerciseFocusInstructions } from '../data/exerciseFocus'
 import { useState, useMemo, useEffect } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Search, X, ChevronRight, Plus, Trash2 } from 'lucide-react'
@@ -82,13 +85,7 @@ export function ExercisesPage() {
 
   const unit = (settings && 'units' in settings && settings.units) || 'kg'
 
-  const latestBodyweight = useMemo(() => {
-    if (!measurements) return 0
-    const bwList = measurements
-      .filter((m) => m.type === 'bodyweight')
-      .sort((a, b) => b.date - a.date)
-    return bwList.length > 0 ? bwList[0].value : 0
-  }, [measurements])
+  const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
 
   const filteredExercises = useMemo(() => {
     if (!exercises) return []
@@ -150,6 +147,10 @@ export function ExercisesPage() {
     if (!selectedExercise) return undefined
     return getEffectiveMedia(selectedExercise.id, selectedOverride)
   }, [selectedExercise, selectedOverride])
+  const instructions = selectedExercise
+    ? getExerciseFocusInstructions(selectedExercise.id, selectedOverride?.focus) ?? instructionsMap?.[selectedExercise.id]
+    : undefined
+
 
   return (
     <div className="p-4 space-y-4">
@@ -393,10 +394,12 @@ export function ExercisesPage() {
             {/* Pestaña: Resumen */}
             {detailTab === 'resumen' && (
               <div className="space-y-4">
+                <ExerciseFocusSelector exerciseId={selectedExercise.id} />
                 {/* Demostración grande animada */}
                 <div className="flex justify-center">
                   <ExerciseDemo
                     exerciseId={selectedExercise.id}
+                    gifUrl={effectiveMedia?.gifUrl}
                     variant="full"
                     alt={selectedExercise.name}
                   />
@@ -461,16 +464,16 @@ export function ExercisesPage() {
                 )}
 
                 {/* Ajuste interactivo de músculos trabajados */}
-                <MuscleToggleList exerciseId={selectedExercise.id} />
+                {!getExerciseFocusDefinition(selectedExercise.id) && <MuscleToggleList exerciseId={selectedExercise.id} />}
 
                 {/* Instrucciones de técnica */}
-                {selectedExercise && instructionsMap && instructionsMap[selectedExercise.id]?.length > 0 && (
+                {instructions && instructions.length > 0 && (
                   <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 space-y-2">
                     <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
                       Cómo se hace
                     </span>
                     <ol className="space-y-1.5 text-xs text-neutral-300 list-decimal list-inside leading-relaxed">
-                      {instructionsMap[selectedExercise.id].map((step, idx) => (
+                      {instructions.map((step, idx) => (
                         <li key={idx} className="text-neutral-300">
                           <span className="text-neutral-200">{step}</span>
                         </li>

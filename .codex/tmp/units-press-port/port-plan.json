@@ -1,0 +1,51 @@
+{
+  "source": "C:\\Users\\1233896946\\Documents\\Project Hard\\HardFit-main",
+  "target": "C:\\Users\\1233896946\\Documents\\hard\\HardFit",
+  "backup": "C:\\Users\\1233896946\\Documents\\hard\\HardFit\\.codex\\tmp\\units-press-before-4f96f603",
+  "changed": [
+    "docs/press-user-images.json",
+    "package.json",
+    "scripts/exercise-focus.test.mjs",
+    "scripts/rename-catalog.mjs",
+    "scripts/weight-units.test.mjs",
+    "src/components/AnatomicalPressAnimation.tsx",
+    "src/components/ExerciseDemo.tsx",
+    "src/components/ExerciseFocusSelector.tsx",
+    "src/components/ExerciseHistoryTab.tsx",
+    "src/components/ExercisePreviewModal.tsx",
+    "src/components/Layout.tsx",
+    "src/components/MonthlyReportSection.tsx",
+    "src/components/RadarStatsSection.tsx",
+    "src/components/RestPicker.tsx",
+    "src/data/catalog.ts",
+    "src/data/exerciseFocus.ts",
+    "src/data/pressFocus.ts",
+    "src/db/db.ts",
+    "src/db/seed.ts",
+    "src/index.css",
+    "src/pages/ExercisesPage.tsx",
+    "src/pages/HistoryPage.tsx",
+    "src/pages/HomePage.tsx",
+    "src/pages/RoutineEditorPage.tsx",
+    "src/pages/StatsPage.tsx",
+    "src/pages/WorkoutPage.tsx",
+    "src/pages/WorkoutSummaryPage.tsx",
+    "src/store/workoutStore.ts",
+    "src/sync/sync.ts",
+    "src/types.ts",
+    "src/utils/effectiveMuscles.ts",
+    "src/utils/exportData.ts",
+    "src/utils/stats.ts",
+    "src/utils/weightUnits.ts",
+    "src/utils/workoutSummary.ts",
+    "vite.config.ts"
+  ],
+  "catalogChanged": [
+    "calves/lever-seated-squat-calf-raise-on-leg-press-machine"
+  ],
+  "catalogCount": 1277,
+  "focusExerciseIds": [
+    "calves/lever-seated-squat-calf-raise-on-leg-press-machine",
+    "glutes/sled-45-leg-press-side-pov"
+  ]
+}

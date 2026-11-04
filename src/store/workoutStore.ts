@@ -1,3 +1,4 @@
+import { asWeightUnit, getEntryWeightUnit, stampWorkoutWeightUnits, changeWorkoutWeightUnit, changeEntryWeightUnit, type WeightUnit } from '../utils/weightUnits'
 import { create } from 'zustand'
 import { db } from '../db'
 import { syncNow } from '../sync'
@@ -17,6 +18,10 @@ export interface RestTimerState {
 export interface WorkoutSessionState {
   activeWorkout: Workout | null
   isLoaded: boolean
+  defaultWeightUnit: WeightUnit
+  setDefaultWeightUnit: (unit: WeightUnit) => void
+  setWorkoutWeightUnit: (unit: WeightUnit) => void
+  setEntryWeightUnit: (entryIndex: number, unit: WeightUnit | null) => void
   restTimer: RestTimerState | null
 
   // Workout lifecycle
@@ -50,6 +55,7 @@ export interface WorkoutSessionState {
 }
 
 const LOCAL_STORAGE_KEY = 'replog_active_workout'
+let lastPersistedAt = 0
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -61,12 +67,14 @@ function generateId(): string {
 async function persistActiveWorkout(workout: Workout | null): Promise<void> {
   try {
     if (workout) {
+      lastPersistedAt = Math.max(Date.now(), lastPersistedAt + 1, (workout.updatedAt ?? 0) + 1)
+      const snapshot = { ...workout, updatedAt: lastPersistedAt }
       if (typeof window !== 'undefined' && window.localStorage) {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(workout))
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(snapshot))
       }
       await db.settings.put({
         id: 'active_workout',
-        workout,
+        workout: snapshot,
       })
     } else {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -93,6 +101,20 @@ function getInitialWorkout(): Workout | null {
 export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
   activeWorkout: getInitialWorkout(),
   isLoaded: false,
+  defaultWeightUnit: 'kg',
+  setDefaultWeightUnit: (unit) => set({ defaultWeightUnit: unit }),
+  setWorkoutWeightUnit: (unit) => {
+    const current = get().activeWorkout
+    if (!current) return
+    const updated = changeWorkoutWeightUnit(stampWorkoutWeightUnits(current, get().defaultWeightUnit), unit)
+    set({ activeWorkout: updated }); persistActiveWorkout(updated)
+  },
+  setEntryWeightUnit: (entryIndex, unit) => {
+    const current = get().activeWorkout
+    if (!current) return
+    const updated = changeEntryWeightUnit(stampWorkoutWeightUnits(current, get().defaultWeightUnit), entryIndex, unit)
+    set({ activeWorkout: updated }); persistActiveWorkout(updated)
+  },
   restTimer: null,
 
   startEmptyWorkout: (name?: string) => {
@@ -101,6 +123,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
     const newWorkout: Workout = {
       id: generateId(),
       name: name && name.trim() ? name.trim() : 'Entrenamiento libre',
+      weightUnit: get().defaultWeightUnit,
       startedAt: Date.now(),
       finishedAt: null,
       routineId: null,
@@ -119,17 +142,22 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
       const newWorkout: Workout = {
         id: generateId(),
         name: routine.name,
+        weightUnit: routine.weightUnit ?? get().defaultWeightUnit,
+        restSeconds: routine.restSeconds,
         startedAt: Date.now(),
         finishedAt: null,
         routineId: routine.id,
         notes: '',
         entries: sortedItems.map((item) => ({
           exerciseId: item.exerciseId,
+          weightUnit: item.weightUnit,
+          restSeconds: item.restSeconds,
           sets:
             item.targetSets && item.targetSets.length > 0
               ? item.targetSets.map((ts) => ({
                   type: 'normal',
                   weight: ts.weight,
+                  weightUnit: ts.weightUnit ?? item.weightUnit ?? routine.weightUnit ?? get().defaultWeightUnit,
                   reps: ts.reps,
                   rpe: ts.rpe,
                   durationSec: ts.durationSec,
@@ -175,6 +203,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
                 const s: WorkoutSetEntry = {
                   type: 'normal',
                   completed: false,
+                  weightUnit: ts.weightUnit ?? item.weightUnit ?? routine.weightUnit ?? get().defaultWeightUnit,
                   rpe: ts.rpe,
                 }
 
@@ -194,6 +223,8 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
 
         return {
           exerciseId: item.exerciseId,
+          weightUnit: item.weightUnit,
+          restSeconds: item.restSeconds,
           sets,
         }
       })
@@ -201,6 +232,8 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
       const newWorkout: Workout = {
         id: generateId(),
         name: routine.name,
+        weightUnit: routine.weightUnit ?? get().defaultWeightUnit,
+        restSeconds: routine.restSeconds,
         startedAt: Date.now(),
         finishedAt: null,
         routineId: routine.id,
@@ -279,6 +312,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
       sets: [
         {
           type: 'normal' as const,
+          weightUnit: activeWorkout.weightUnit ?? get().defaultWeightUnit,
           completed: false,
         },
       ],
@@ -332,6 +366,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
       type: 'normal',
       completed: false,
       weight: prevSet?.weight,
+      weightUnit: prevSet?.weightUnit ?? getEntryWeightUnit(activeWorkout, targetEntry, get().defaultWeightUnit),
       reps: prevSet?.reps,
       durationSec: prevSet?.durationSec,
       distanceM: prevSet?.distanceM,
@@ -358,7 +393,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
       if (eIdx !== entryIndex) return entry
       const updatedSets = entry.sets.map((s, sIdx) => {
         if (sIdx !== setIndex) return s
-        return { ...s, ...patch }
+        return { ...s, ...patch, ...('weight' in patch ? { weightUnit: getEntryWeightUnit(activeWorkout, entry, get().defaultWeightUnit) } : {}) }
       })
       return { ...entry, sets: updatedSets }
     })
@@ -530,8 +565,21 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
 
   rehydrate: async () => {
     try {
-      const record = (await db.settings.get('active_workout')) as ActiveWorkoutRecord | undefined
+      const app = await db.settings.get('app')
+      const fallbackUnit = app && 'units' in app ? asWeightUnit(app.units) : 'kg'
+      set({ defaultWeightUnit: fallbackUnit })
+      let record = (await db.settings.get('active_workout')) as ActiveWorkoutRecord | undefined
+      // localStorage se escribe de forma s?ncrona; una recarga puede interrumpir el ?ltimo put de IndexedDB.
+      try {
+        const cachedRaw = typeof window !== 'undefined' ? localStorage.getItem(LOCAL_STORAGE_KEY) : null
+        const cached = cachedRaw ? JSON.parse(cachedRaw) as Workout : null
+        if (cached && (!record?.workout || (cached.updatedAt ?? 0) > (record.workout.updatedAt ?? 0))) {
+          record = { id: 'active_workout', workout: cached }
+          await db.settings.put(record)
+        }
+      } catch { /* Si el cache no es v?lido, se usa IndexedDB. */ }
       if (record && record.workout) {
+        record.workout = stampWorkoutWeightUnits(record.workout, fallbackUnit)
         set({ activeWorkout: record.workout, isLoaded: true })
         if (typeof window !== 'undefined' && window.localStorage) {
           localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(record.workout))
@@ -543,7 +591,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
             : null
         if (raw) {
           try {
-            const parsed = JSON.parse(raw) as Workout
+            const parsed = stampWorkoutWeightUnits(JSON.parse(raw) as Workout, fallbackUnit)
             set({ activeWorkout: parsed, isLoaded: true })
             await db.settings.put({ id: 'active_workout', workout: parsed })
           } catch {

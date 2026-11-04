@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-03",
+  "source": "user-provided images; original bytes; no image generation or raster editing",
+  "playback": {
+    "positions": 2,
+    "cycleSeconds": 3.2,
+    "transition": "discrete",
+    "reducedMotion": "first position"
+  },
+  "assets": [
+    {
+      "mode": "horizontal",
+      "focus": "quadriceps",
+      "sourceName": "prensa hori, cuadriceps.jpeg",
+      "sha256": "a093c86fa81a884051673bd5cec53e9690f6168ad739db1f1ff6e379bdd2d0b2",
+      "width": 2752,
+      "height": 1536,
+      "exerciseId": "calves/lever-seated-squat-calf-raise-on-leg-press-machine",
+      "path": "public/animations/leg-press-user/horizontal-quadriceps-poses.jpeg",
+      "columns": 2,
+      "rows": 1
+    },
+    {
+      "mode": "horizontal",
+      "focus": "posterior-chain",
+      "sourceName": "prensa hori, gluteo.jpeg",
+      "sha256": "1bc4ab82fa1957819744801eb49fe5ee9010cec06fa69e40c9dfa7bf5f5ab220",
+      "width": 2752,
+      "height": 1536,
+      "exerciseId": "calves/lever-seated-squat-calf-raise-on-leg-press-machine",
+      "path": "public/animations/leg-press-user/horizontal-posterior-chain-poses.jpeg",
+      "columns": 2,
+      "rows": 1
+    },
+    {
+      "mode": "horizontal",
+      "focus": "calves",
+      "sourceName": "prensa hori, pantorrilla.jpeg",
+      "sha256": "950e3cd8338a4fb143846c3cef261d4f21f2f2439c8d80233c21b96dc7031a57",
+      "width": 2752,
+      "height": 1536,
+      "exerciseId": "calves/lever-seated-squat-calf-raise-on-leg-press-machine",
+      "path": "public/animations/leg-press-user/horizontal-calves-poses.jpeg",
+      "columns": 2,
+      "rows": 1
+    },
+    {
+      "mode": "inclined",
+      "focus": "quadriceps",
+      "sourceName": "prensa cuadriceps.webp",
+      "sha256": "c9ba5b8683edf198374d3bc840eafa63fa6b89ac2e0d14c2deaa8b9073a34054",
+      "width": 600,
+      "height": 254,
+      "exerciseId": "glutes/sled-45-leg-press-side-pov",
+      "path": "public/animations/leg-press-user/inclined-quadriceps-poses.webp",
+      "columns": 2,
+      "rows": 1
+    },
+    {
+      "mode": "inclined",
+      "focus": "posterior-chain",
+      "sourceName": "prensa gluteo.jpeg",
+      "sha256": "01bacffae21a3bdb570611bca0112252157b11c7492f076b3662f570bdac1446",
+      "width": 2752,
+      "height": 1536,
+      "exerciseId": "glutes/sled-45-leg-press-side-pov",
+      "path": "public/animations/leg-press-user/inclined-posterior-chain-poses.jpeg",
+      "columns": 2,
+      "rows": 1
+    },
+    {
+      "mode": "inclined",
+      "focus": "calves",
+      "sourceName": "prensa pantorrilla.jpeg",
+      "sha256": "699107d6c4b807360f9de6d5aaaba773b53f83e9a7e65c66981d992ede23bcfe",
+      "width": 2752,
+      "height": 1536,
+      "exerciseId": "glutes/sled-45-leg-press-side-pov",
+      "path": "public/animations/leg-press-user/inclined-calves-poses.jpeg",
+      "columns": 2,
+      "rows": 1
+    }
+  ]
+}

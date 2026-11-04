@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "fetch:catalog": "node scripts/fetch-catalog.mjs",
     "fetch:muscles": "node scripts/fetch-exercise-muscles.mjs",
-    "fetch:gifs": "node scripts/fetch-exercise-gifs.mjs"
+    "fetch:gifs": "node scripts/fetch-exercise-gifs.mjs",
+    "test:weight-units": "node --experimental-strip-types --test scripts/weight-units.test.mjs",
+    "test:exercise-focus": "node --experimental-strip-types --test scripts/exercise-focus.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",

@@ -1,3 +1,4 @@
+import { displayWeight, weightInKg, getLatestBodyweightKg, getEntryWeightUnit, convertSetWeight, asWeightUnit, inputWeight, stampWorkoutWeightUnits } from '../utils/weightUnits'
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -57,6 +58,8 @@ function formatSetPerformance(
   exerciseType: ExerciseType,
   unit: string
 ): string {
+  const converted = convertSetWeight(set, asWeightUnit(unit))
+  set = { ...converted, weight: converted.weight === undefined ? undefined : Number(inputWeight(converted.weight)) }
   switch (exerciseType) {
     case 'weight_reps':
       return `${set.weight ?? 0} ${unit} × ${set.reps ?? 0} reps`
@@ -127,7 +130,7 @@ export function HistoryPage() {
 
   const handleSaveEdit = async () => {
     if (!editWorkout) return
-    await db.workouts.put(editWorkout)
+    await db.workouts.put(stampWorkoutWeightUnits(editWorkout, unit))
     setIsEditing(false)
     setEditWorkout(null)
   }
@@ -137,7 +140,7 @@ export function HistoryPage() {
     const newEntries = [...editWorkout.entries]
     const currentEntry = { ...newEntries[entryIdx] }
     const newSets = [...currentEntry.sets]
-    newSets[setIdx] = { ...newSets[setIdx], ...patch }
+    newSets[setIdx] = { ...newSets[setIdx], ...patch, ...('weight' in patch ? { weightUnit: getEntryWeightUnit(editWorkout, currentEntry, unit) } : {}) }
     currentEntry.sets = newSets
     newEntries[entryIdx] = currentEntry
     setEditWorkout({ ...editWorkout, entries: newEntries })
@@ -160,6 +163,7 @@ export function HistoryPage() {
     const newSet: WorkoutSetEntry = {
       type: 'normal',
       weight: lastSet?.weight,
+      weightUnit: lastSet?.weightUnit ?? getEntryWeightUnit(editWorkout, currentEntry, unit),
       reps: lastSet?.reps,
       rpe: lastSet?.rpe,
       completed: true,
@@ -202,7 +206,7 @@ export function HistoryPage() {
     for (const id of exerciseIds) {
       newEntries.push({
         exerciseId: id,
-        sets: [{ type: 'normal', weight: 0, reps: 0, completed: true }],
+        sets: [{ type: 'normal', weight: 0, weightUnit: editWorkout.weightUnit ?? unit, reps: 0, completed: true }],
       })
     }
     setEditWorkout({ ...editWorkout, entries: newEntries })
@@ -213,6 +217,7 @@ export function HistoryPage() {
     const newWorkout: Workout = {
       id: `workout-past-${now}-${Math.random().toString(36).substring(2, 7)}`,
       name: 'Entrenamiento',
+      weightUnit: unit,
       startedAt: now - 3600 * 1000,
       finishedAt: now,
       routineId: null,
@@ -226,13 +231,7 @@ export function HistoryPage() {
   }
 
   // Peso corporal más reciente registrado en medidas
-  const latestBodyweight = useMemo(() => {
-    if (!measurements) return 0
-    const bwList = measurements
-      .filter((m) => m.type === 'bodyweight')
-      .sort((a, b) => b.date - a.date)
-    return bwList.length > 0 ? bwList[0].value : 0
-  }, [measurements])
+  const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
 
   const exerciseMap = useMemo(() => {
     const map = new Map<string, Exercise>()
@@ -417,6 +416,7 @@ export function HistoryPage() {
             </div>
           ) : (
             editWorkout.entries.map((entry, eIdx) => {
+              const unit = getEntryWeightUnit(editWorkout, entry)
               const ex = exerciseMap.get(entry.exerciseId)
 
               return (
@@ -511,8 +511,8 @@ export function HistoryPage() {
                                 <input
                                   type="number"
                                   min="0"
-                                  step="0.5"
-                                  value={set.weight !== undefined ? set.weight : ''}
+                                  step="any"
+                                  value={inputWeight(convertSetWeight(set, unit).weight)}
                                   onChange={(e) =>
                                     handleUpdateSet(eIdx, sIdx, {
                                       weight: e.target.value === '' ? undefined : Number(e.target.value),
@@ -663,7 +663,7 @@ export function HistoryPage() {
     const formattedFullDate = capitalizeFirst(
       format(finishedDate, "EEEE, d 'de' MMMM 'de' yyyy • HH:mm", { locale: es })
     )
-    const totalVol = workoutVolume(selectedWorkout, exerciseMap, latestBodyweight)
+    const totalVol = displayWeight(workoutVolume(selectedWorkout, exerciseMap, latestBodyweight), unit)
     const validSetsNum = countValidSets(selectedWorkout)
     const durationText = formatDuration(selectedWorkout.startedAt, selectedWorkout.finishedAt)
 
@@ -795,6 +795,7 @@ export function HistoryPage() {
           </h2>
 
           {selectedWorkout.entries?.map((entry, eIdx) => {
+            const unit = getEntryWeightUnit(selectedWorkout, entry)
             const ex = exerciseMap.get(entry.exerciseId)
             const exType = ex?.type ?? 'weight_reps'
             const pr = prsByExercise.get(entry.exerciseId)
@@ -858,7 +859,7 @@ export function HistoryPage() {
                           ? checkSetPR(set, exType, pr, latestBodyweight)
                           : { isPR: false, isWeightPR: false, is1RMPR: false, isRepsPR: false }
 
-                        const wVal = Math.max(0, set.weight || 0)
+                        const wVal = Math.max(0, weightInKg(set))
                         const rVal = Math.max(0, set.reps || 0)
                         const effectiveW =
                           exType === 'bodyweight_reps'
@@ -895,7 +896,7 @@ export function HistoryPage() {
                             </td>
 
                             <td className="py-2.5 px-1 text-center text-neutral-300 font-mono">
-                              {est1rm > 0 ? `${est1rm} ${unit}` : '-'}
+                              {est1rm > 0 ? `${displayWeight(est1rm, unit)} ${unit}` : '-'}
                             </td>
 
                             <td className="py-2.5 px-1 text-center text-neutral-400">
@@ -1036,7 +1037,7 @@ export function HistoryPage() {
             const dateStr = capitalizeFirst(
               format(finishedDate, "EEEE, d 'de' MMMM", { locale: es })
             )
-            const vol = workoutVolume(w, exerciseMap, latestBodyweight)
+            const vol = displayWeight(workoutVolume(w, exerciseMap, latestBodyweight), unit)
             const validSets = countValidSets(w)
             const duration = formatDuration(w.startedAt, w.finishedAt)
 

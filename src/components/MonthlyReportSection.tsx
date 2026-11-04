@@ -1,3 +1,4 @@
+import { displayWeight } from '../utils/weightUnits'
 import { useState, useMemo } from 'react'
 import {
   subMonths,
@@ -130,7 +131,7 @@ export function MonthlyReportSection({
                 <Weight size={14} className="text-white" />
               </div>
               <div className="mt-1 text-xl font-extrabold text-white">
-                {report.volume.toLocaleString()}{' '}
+                {displayWeight(report.volume, unit).toLocaleString()}{' '}
                 <span className="text-xs font-normal text-neutral-400">{unit}</span>
               </div>
             </div>

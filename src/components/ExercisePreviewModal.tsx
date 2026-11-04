@@ -1,3 +1,5 @@
+import { ExerciseFocusSelector } from './ExerciseFocusSelector'
+import { getExerciseFocusDefinition, getExerciseFocusInstructions } from '../data/exerciseFocus'
 import { useState, useEffect, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { X, Plus, ArrowLeft } from 'lucide-react'
@@ -55,7 +57,7 @@ export function ExercisePreviewModal({
     return getEffectiveMedia(exerciseId, override)
   }, [exerciseId, override])
 
-  const instructions = instructionsMap ? instructionsMap[exerciseId] : undefined
+  const instructions = getExerciseFocusInstructions(exerciseId, override?.focus) ?? instructionsMap?.[exerciseId]
 
   return (
     <div
@@ -99,10 +101,12 @@ export function ExercisePreviewModal({
 
         {/* Contenido scrolleable */}
         <div className="p-4 space-y-4 overflow-y-auto flex-1">
+          <ExerciseFocusSelector exerciseId={exerciseId} />
           {/* GIF grande */}
           <div className="flex justify-center">
             <ExerciseDemo
               exerciseId={exerciseId}
+              gifUrl={effectiveMedia.gifUrl}
               variant="full"
               alt={exercise?.name || 'Demostración del ejercicio'}
             />
@@ -215,7 +219,7 @@ export function ExercisePreviewModal({
           )}
 
           {/* Ajuste interactivo de músculos trabajados (checkboxes con persistencia) */}
-          <MuscleToggleList exerciseId={exerciseId} />
+          {!getExerciseFocusDefinition(exerciseId) && <MuscleToggleList exerciseId={exerciseId} />}
         </div>
 
         {/* Botones de acción */}

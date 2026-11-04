@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { useWorkoutStore } from '../store/workoutStore'
 import { Outlet, NavLink } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
@@ -28,6 +30,10 @@ export function Layout() {
     const s = await db.settings.get('app')
     return s && 'units' in s ? s : undefined
   }, [])
+
+  useEffect(() => {
+    if (settings) useWorkoutStore.getState().setDefaultWeightUnit(settings.units)
+  }, [settings])
 
   const showHealthOnboarding = settings !== undefined && settings.healthOnboarded !== true
 

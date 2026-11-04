@@ -1,3 +1,4 @@
+import { asWeightUnit, stampWorkoutWeightUnits, stampRoutineWeightUnits } from '../utils/weightUnits'
 import Dexie, { type Table } from 'dexie'
 import type { Exercise, Folder, Routine, Workout, Measurement, SettingsRecord, SyncMetaItem, ExerciseNote, MuscleOverride } from '../types'
 
@@ -46,6 +47,22 @@ export class RepLogDatabase extends Dexie {
       .upgrade(() => {
         // Upgrade vacío: preserva todas las tablas y datos existentes
       })
+
+    this.version(5).stores({}).upgrade(async (tx) => {
+      const app = await tx.table('settings').get('app')
+      const originalUnit = asWeightUnit(app?.units)
+      await tx.table('workouts').toCollection().modify((workout: Workout) => {
+        Object.assign(workout, stampWorkoutWeightUnits(workout, originalUnit))
+      })
+      await tx.table('routines').toCollection().modify((routine: Routine) => {
+        Object.assign(routine, stampRoutineWeightUnits(routine, originalUnit))
+      })
+      const active = await tx.table('settings').get('active_workout')
+      if (active?.workout) {
+        await tx.table('settings').put({ ...active, workout: stampWorkoutWeightUnits(active.workout, originalUnit) })
+      }
+      if (app) await tx.table('settings').put({ ...app, legacyWeightUnit: app.legacyWeightUnit ?? originalUnit })
+    })
   }
 }
 

@@ -1,3 +1,4 @@
+import { getEntryWeightUnit, convertSetWeight, inputWeight, type WeightUnit } from '../utils/weightUnits'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -67,6 +68,8 @@ export function WorkoutPage() {
     removeSet,
     setWorkoutRest,
     setEntryRest,
+    setWorkoutWeightUnit,
+    setEntryWeightUnit,
   } = useWorkoutStore()
 
   const settings = useLiveQuery(() => db.settings.get('app'), [])
@@ -80,7 +83,8 @@ export function WorkoutPage() {
   const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
   const [replacingEntryIndex, setReplacingEntryIndex] = useState<number | null>(null)
 
-  const unit = (settings && 'units' in settings && settings.units) || 'kg'
+  const appUnit = (settings && 'units' in settings && settings.units) || 'kg'
+  const unit = activeWorkout?.weightUnit ?? appUnit
   const showRpe = !!(settings && 'showRpe' in settings && settings.showRpe)
   const appRestSeconds =
     settings && 'restSeconds' in settings && typeof settings.restSeconds === 'number'
@@ -229,9 +233,11 @@ export function WorkoutPage() {
   // Formato para la columna "Anterior"
   const formatPreviousSet = (
     exercise: Exercise | undefined,
-    prevSet: WorkoutSetEntry | undefined
+    prevSet: WorkoutSetEntry | undefined,
+    unit: WeightUnit,
   ): string => {
     if (!prevSet) return '-'
+    prevSet = { ...prevSet, weight: prevSet.weight === undefined ? undefined : Number(inputWeight(prevSet.weight)) }
     const type = exercise?.type ?? 'weight_reps'
 
     switch (type) {
@@ -304,10 +310,11 @@ export function WorkoutPage() {
           <button
             type="button"
             onClick={() => setRestPickerState({ mode: 'global' })}
+            aria-label="Configurar descanso y unidad global"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-300 hover:text-white transition"
           >
             <Timer size={14} className="text-neutral-400" />
-            <span>Descanso: {formatRest(efectivoGlobal)}</span>
+            <span>Descanso: {formatRest(efectivoGlobal)} · {unit}</span>
           </button>
         </div>
       </div>
@@ -317,7 +324,8 @@ export function WorkoutPage() {
         {activeWorkout.entries.map((entry, entryIndex) => {
           const exercise = exerciseMap.get(entry.exerciseId)
           const exerciseType = exercise?.type ?? 'weight_reps'
-          const prevSets = previousHistoryMap.get(entry.exerciseId)
+          const unit = getEntryWeightUnit(activeWorkout, entry, appUnit)
+          const prevSets = previousHistoryMap.get(entry.exerciseId)?.map(set => convertSetWeight(set, unit))
 
           return (
             <div
@@ -350,6 +358,7 @@ export function WorkoutPage() {
                     <button
                       type="button"
                       onClick={() => setRestPickerState({ mode: 'entry', entryIndex })}
+                      aria-label={'Configurar descanso y unidad de ' + (exercise?.name ?? 'ejercicio')}
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-[11px] font-medium text-neutral-300 hover:text-white transition"
                     >
                       <Timer size={12} className="text-neutral-400" />
@@ -357,6 +366,7 @@ export function WorkoutPage() {
                         {entry.restSeconds === undefined
                           ? `Descanso: Global (${formatRest(efectivoGlobal)})`
                           : `Descanso: ${formatRest(entry.restSeconds)}`}
+                        {exerciseType !== 'duration' && exerciseType !== 'distance' && <> · {unit}</>}
                       </span>
                     </button>
                   </div>
@@ -474,7 +484,7 @@ export function WorkoutPage() {
 
                           {/* Columna Anterior */}
                           <td className="py-2 px-1 text-center text-[11px] text-neutral-400 font-mono whitespace-nowrap">
-                            {formatPreviousSet(exercise, prevSet)}
+                            {formatPreviousSet(exercise, prevSet, unit)}
                           </td>
 
                           {/* Inputs según tipo de ejercicio */}
@@ -484,11 +494,11 @@ export function WorkoutPage() {
                                 <input
                                   type="number"
                                   min="0"
-                                  step="0.5"
+                                  step="any"
                                   placeholder={
-                                    prevSet?.weight !== undefined ? String(prevSet.weight) : '-'
+                                    prevSet?.weight !== undefined ? String(inputWeight(prevSet.weight)) : '-'
                                   }
-                                  value={set.weight ?? ''}
+                                  value={inputWeight(convertSetWeight(set, unit).weight)}
                                   onChange={(e) =>
                                     updateSet(entryIndex, setIndex, {
                                       weight:
@@ -525,11 +535,11 @@ export function WorkoutPage() {
                                 <input
                                   type="number"
                                   min="0"
-                                  step="0.5"
+                                  step="any"
                                   placeholder={
                                     prevSet?.weight !== undefined ? `+${prevSet.weight}` : '+0'
                                   }
-                                  value={set.weight ?? ''}
+                                  value={inputWeight(convertSetWeight(set, unit).weight)}
                                   onChange={(e) =>
                                     updateSet(entryIndex, setIndex, {
                                       weight:
@@ -566,11 +576,11 @@ export function WorkoutPage() {
                                 <input
                                   type="number"
                                   min="0"
-                                  step="0.5"
+                                  step="any"
                                   placeholder={
                                     prevSet?.weight !== undefined ? `-${prevSet.weight}` : '-0'
                                   }
-                                  value={set.weight ?? ''}
+                                  value={inputWeight(convertSetWeight(set, unit).weight)}
                                   onChange={(e) =>
                                     updateSet(entryIndex, setIndex, {
                                       weight:
@@ -831,9 +841,20 @@ export function WorkoutPage() {
           isOpen={restPickerState !== null}
           title={
             restPickerState.mode === 'global'
-              ? 'Descanso global del entreno'
+              ? 'Descanso y unidad global'
               : (exerciseMap.get(activeWorkout.entries[restPickerState.entryIndex]?.exerciseId)?.name ?? 'Ejercicio')
           }
+          currentWeightUnit={restPickerState.mode === 'global'
+            ? unit
+            : ['duration', 'distance'].includes(exerciseMap.get(activeWorkout.entries[restPickerState.entryIndex]?.exerciseId)?.type ?? '')
+              ? undefined
+              : getEntryWeightUnit(activeWorkout, activeWorkout.entries[restPickerState.entryIndex], appUnit)}
+          globalWeightUnit={unit}
+          weightUnitOverride={restPickerState.mode === 'entry' ? activeWorkout.entries[restPickerState.entryIndex]?.weightUnit : undefined}
+          onWeightUnitChange={(selected) => {
+            if (restPickerState.mode === 'global') setWorkoutWeightUnit(selected ?? appUnit)
+            else setEntryWeightUnit(restPickerState.entryIndex, selected)
+          }}
           currentSeconds={
             restPickerState.mode === 'global'
               ? efectivoGlobal

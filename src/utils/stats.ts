@@ -1,3 +1,4 @@
+import { weightInKg } from './weightUnits'
 import {
   startOfWeek,
   subWeeks,
@@ -53,7 +54,7 @@ export function setVolume(
   if (!isValidSet(set)) return 0
 
   const reps = Math.max(0, set.reps || 0)
-  const weight = Math.max(0, set.weight || 0)
+  const weight = Math.max(0, weightInKg(set))
   const bw = Math.max(0, bodyweightKg || 0)
 
   let vol = 0
@@ -229,7 +230,7 @@ export function personalRecords(
       for (const s of entry.sets) {
         if (!isValidSet(s)) continue
 
-        const wVal = Math.max(0, s.weight || 0)
+        const wVal = Math.max(0, weightInKg(s))
         const rVal = Math.max(0, s.reps || 0)
 
         if (wVal > maxWeight) maxWeight = wVal
@@ -346,7 +347,7 @@ export function seriesOverTime(
         if (!isValidSet(s)) continue
         hasValidSets = true
 
-        const wVal = Math.max(0, s.weight || 0)
+        const wVal = Math.max(0, weightInKg(s))
         const rVal = Math.max(0, s.reps || 0)
 
         const effectiveWeight =
@@ -485,7 +486,7 @@ export function checkSetPR(
     return { isWeightPR: false, is1RMPR: false, isRepsPR: false, isPR: false }
   }
 
-  const w = Math.max(0, set.weight || 0)
+  const w = Math.max(0, weightInKg(set))
   const r = Math.max(0, set.reps || 0)
 
   const effectiveWeight =

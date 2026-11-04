@@ -1,3 +1,4 @@
+import { weightInKg } from './weightUnits'
 import type { Workout, WorkoutSetEntry, Exercise, ExerciseType } from '../types'
 import { isValidSet, estimated1RM, setVolume, workoutVolume, countValidSets } from './stats'
 
@@ -171,7 +172,7 @@ export function summarizeWorkout(
         if (entry.exerciseId !== exerciseId || !entry.sets) continue
         for (const s of entry.sets) {
           if (!isValidSet(s)) continue
-          const w = Math.max(0, s.weight || 0)
+          const w = Math.max(0, weightInKg(s))
           const r = Math.max(0, s.reps || 0)
           const effW = getEffectiveWeight(exType, w, bodyweightKg)
           const weightForRecord =
@@ -226,7 +227,7 @@ export function summarizeWorkout(
       entry.sets.forEach((s, setIndex) => {
         if (!isValidSet(s)) return
 
-        const w = Math.max(0, s.weight || 0)
+        const w = Math.max(0, weightInKg(s))
         const r = Math.max(0, s.reps || 0)
         const effW = getEffectiveWeight(exType, w, bodyweightKg)
         const weightVal =
@@ -326,7 +327,7 @@ export function summarizeWorkout(
         exerciseId,
         setIndex,
         kinds: item.kinds,
-        weight: item.set.weight,
+        weight: weightInKg(item.set),
         reps: item.set.reps,
       })
     }

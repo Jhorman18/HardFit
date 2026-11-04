@@ -4066,7 +4066,7 @@ export const catalog: CatalogExercise[] = [
   },
   {
     "id": "calves/lever-seated-squat-calf-raise-on-leg-press-machine",
-    "name": "Elevación de talones sentado en máquina",
+    "name": "Prensa horizontal",
     "muscleGroup": "Pierna",
     "equipment": "Máquina",
     "type": "weight_reps",
@@ -4074,7 +4074,10 @@ export const catalog: CatalogExercise[] = [
       "Elevación de talones en máquina, sentado, en prensa de piernas, sentadilla",
       "pantorrilla",
       "gemelos",
-      "pantorrillas"
+      "pantorrillas",
+      "Elevación de talones sentado en máquina",
+      "Prensa horizontal",
+      "Prensa horizontal de piernas"
     ]
   },
   {

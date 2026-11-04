@@ -1,3 +1,4 @@
+import { displayWeight } from '../utils/weightUnits'
 import { useState, useMemo } from 'react'
 import { subDays } from 'date-fns'
 import {
@@ -282,13 +283,13 @@ export function RadarStatsSection({
             <Weight size={14} className="text-white" />
           </div>
           <div className="mt-1 text-xl font-extrabold text-white">
-            {actualSummary.volume.toLocaleString()}{' '}
+            {displayWeight(actualSummary.volume, unit).toLocaleString()}{' '}
             <span className="text-xs font-normal text-neutral-400">{unit}</span>
           </div>
           <div className="mt-1">
             {renderDelta(
-              Math.round(actualSummary.volume),
-              Math.round(anteriorSummary.volume),
+              displayWeight(actualSummary.volume, unit),
+              displayWeight(anteriorSummary.volume, unit),
               ` ${unit}`
             )}
           </div>

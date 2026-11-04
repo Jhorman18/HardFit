@@ -1,3 +1,5 @@
+import { createPortal } from 'react-dom'
+import type { WeightUnit } from '../utils/weightUnits'
 import { useState } from 'react'
 import { Timer, X, RotateCcw } from 'lucide-react'
 
@@ -6,6 +8,10 @@ export interface RestPickerProps {
   title: string
   currentSeconds: number
   allowGlobal?: boolean
+  currentWeightUnit?: WeightUnit
+  globalWeightUnit?: WeightUnit
+  weightUnitOverride?: WeightUnit
+  onWeightUnitChange?: (unit: WeightUnit | null) => void
   onSelect: (seconds: number) => void
   onUseGlobal?: () => void
   onClose: () => void
@@ -50,6 +56,10 @@ export function RestPicker({
   title,
   currentSeconds,
   allowGlobal = false,
+  currentWeightUnit,
+  globalWeightUnit,
+  weightUnitOverride,
+  onWeightUnitChange,
   onSelect,
   onUseGlobal,
   onClose,
@@ -71,13 +81,14 @@ export function RestPicker({
     }
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      role="dialog" aria-modal="true" aria-label={title}
+      className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-t-2xl sm:rounded-2xl p-4 space-y-4 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+        className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-t-2xl sm:rounded-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera */}
@@ -95,6 +106,27 @@ export function RestPicker({
             <X size={18} />
           </button>
         </div>
+
+        {currentWeightUnit && onWeightUnitChange && (
+          <fieldset className="space-y-2" aria-label="Unidad de peso">
+            <legend className="text-[11px] uppercase tracking-wider font-bold text-neutral-400">Unidad de peso</legend>
+            <div className="flex flex-wrap gap-2">
+              {allowGlobal && globalWeightUnit && (
+                <label className="flex items-center gap-2 text-xs bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2">
+                  <input type="radio" name="weight-unit" value="global" checked={!weightUnitOverride} onChange={() => onWeightUnitChange(null)} />
+                  Global ({globalWeightUnit})
+                </label>
+              )}
+              {(['kg', 'lb'] as const).map(unit => (
+                <label key={unit} className="flex items-center gap-2 text-xs bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2">
+                  <input type="radio" name="weight-unit" value={unit} checked={currentWeightUnit === unit && (!allowGlobal || !!weightUnitOverride)} onChange={() => onWeightUnitChange(unit)} />
+                  {unit === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}
+                </label>
+              ))}
+            </div>
+            <p className="text-[11px] text-neutral-400">Al cambiar la unidad, las cargas ya anotadas se convierten.</p>
+          </fieldset>
+        )}
 
         {/* Botón opcional para usar descanso global */}
         {allowGlobal && (
@@ -172,6 +204,7 @@ export function RestPicker({
           )}
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

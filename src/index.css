@@ -120,3 +120,50 @@ h1, h2, .font-display {
 ::-webkit-scrollbar-thumb:hover {
   background: rgb(var(--n-700));
 }
+
+/* Secuencia de poses anatómicas: 1 → 2 → 3 → 4 → 3 → 2. */
+.press-anatomy-pose {
+  opacity: 0;
+  animation-duration: 4.8s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.press-anatomy-pose-0 { opacity: 1; animation-name: press-anatomy-first; }
+.press-anatomy-pose-1 { animation-name: press-anatomy-second; }
+.press-anatomy-pose-2 { animation-name: press-anatomy-third; }
+.press-anatomy-pose-3 { animation-name: press-anatomy-fourth; }
+@keyframes press-anatomy-first {
+  0%, 12%, 100% { opacity: 1; }
+  16.6667%, 95.6667% { opacity: 0; }
+}
+@keyframes press-anatomy-second {
+  0%, 12%, 33.3333%, 79%, 100% { opacity: 0; }
+  16.6667%, 29%, 83.3333%, 95.6667% { opacity: 1; }
+}
+@keyframes press-anatomy-third {
+  0%, 29%, 50%, 62.3333%, 83.3333%, 100% { opacity: 0; }
+  33.3333%, 45.6667%, 66.6667%, 79% { opacity: 1; }
+}
+@keyframes press-anatomy-fourth {
+  0%, 45.6667%, 66.6667%, 100% { opacity: 0; }
+  50%, 62.3333% { opacity: 1; }
+}
+/* Dos posiciones originales: cambio directo, sin fundido ni cuerpos superpuestos. */
+.press-anatomy-two-poses .press-anatomy-pose {
+  animation-duration: 3.2s;
+  animation-timing-function: steps(1, end);
+}
+.press-anatomy-two-poses .press-anatomy-pose-0 { animation-name: press-reference-first; }
+.press-anatomy-two-poses .press-anatomy-pose-1 { animation-name: press-reference-second; }
+@keyframes press-reference-first {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes press-reference-second {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .press-anatomy-pose, .press-anatomy-two-poses .press-anatomy-pose { animation: none; opacity: 0; }
+  .press-anatomy-pose-0, .press-anatomy-two-poses .press-anatomy-pose-0 { opacity: 1; }
+}

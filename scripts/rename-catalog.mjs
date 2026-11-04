@@ -340,6 +340,11 @@ async function main() {
       updated.aliases = aliases
     }
 
+    if (entry.id === 'calves/lever-seated-squat-calf-raise-on-leg-press-machine') {
+      updated.name = 'Prensa horizontal'
+      updated.aliases = [...new Set([...(entry.aliases || []), entry.name, ...(updated.aliases || []), 'Prensa horizontal', 'Prensa horizontal de piernas'])]
+    }
+
     return updated
   })
 

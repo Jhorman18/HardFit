@@ -1,3 +1,4 @@
+import { displayWeight, getLatestBodyweightKg } from '../utils/weightUnits'
 import { useState, useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router-dom'
@@ -37,13 +38,7 @@ export function HomePage() {
 
   const unit = settings?.units ?? 'kg'
 
-  const latestBodyweight = useMemo(() => {
-    if (!measurements) return 0
-    const bwList = measurements
-      .filter((m) => m.type === 'bodyweight')
-      .sort((a, b) => b.date - a.date)
-    return bwList.length > 0 ? bwList[0].value : 0
-  }, [measurements])
+  const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
 
   const exerciseMap = useMemo(() => {
     const map = new Map<string, Exercise>()
@@ -67,8 +62,8 @@ export function HomePage() {
   const currentStreak = useMemo(() => (workouts ? weeklyStreak(workouts) : 0), [workouts])
   const finishedCount = finishedWorkouts.length
   const totalAccumulatedVolume = useMemo(
-    () => (workouts ? totalVolume(workouts, exerciseMap, latestBodyweight) : 0),
-    [workouts, exerciseMap, latestBodyweight]
+    () => (workouts ? displayWeight(totalVolume(workouts, exerciseMap, latestBodyweight), unit) : 0),
+    [workouts, exerciseMap, latestBodyweight, unit]
   )
 
   const handleStartRoutine = async (routine: Routine) => {
@@ -199,7 +194,7 @@ export function HomePage() {
             {finishedWorkouts.slice(0, 2).map((w) => {
               const finishedDate = new Date(w.finishedAt || w.startedAt)
               const dateStr = format(finishedDate, "EEEE, d 'de' MMMM", { locale: es })
-              const vol = workoutVolume(w, exerciseMap, latestBodyweight)
+              const vol = displayWeight(workoutVolume(w, exerciseMap, latestBodyweight), unit)
               const validSets = countValidSets(w)
 
               return (
