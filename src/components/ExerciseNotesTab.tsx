@@ -37,20 +37,20 @@ function ExerciseNotesForm({ exerciseId, initialText, updatedAt }: ExerciseNotes
 
   return (
     <div className="space-y-4">
-      <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-3.5 space-y-3">
+      <div className="bg-surface border border-line rounded-md p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <div className="flex items-center gap-1.5 text-white font-semibold text-xs">
-              <FileText size={14} className="text-neutral-400" />
+            <div className="flex items-center gap-1.5 text-white font-semibold text-sm">
+              <FileText size={16} className="text-neutral-400" />
               <span>Notas personales</span>
             </div>
-            <p className="text-[11px] text-neutral-400 mt-0.5">
-              Técnica, sensaciones, ajuste de máquinas, postura o recordatorios para este ejercicio.
+            <p className="text-xs text-neutral-400 mt-0.5">
+              Técnica, sensaciones, ajuste de máquinas, postura o recordatorios.
             </p>
           </div>
 
           {updatedAt && (
-            <span className="text-[10px] text-neutral-500 whitespace-nowrap shrink-0">
+            <span className="label-tech text-neutral-400 whitespace-nowrap shrink-0">
               {format(new Date(updatedAt), "d MMM, HH:mm", { locale: es })}
             </span>
           )}
@@ -62,22 +62,22 @@ function ExerciseNotesForm({ exerciseId, initialText, updatedAt }: ExerciseNotes
             setText(e.target.value)
             if (saveSuccess) setSaveSuccess(false)
           }}
-          rows={6}
-          placeholder="Escribe aquí tu nota personal para este ejercicio (ej. Banco en posición 3, enfocar retracción escapular, agarre a la anchura de hombros)..."
-          className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-white transition resize-none leading-relaxed"
+          rows={5}
+          placeholder="Escribe aquí tu nota personal para este ejercicio..."
+          className="field h-auto py-3 leading-relaxed resize-none text-[15px]"
         />
 
-        <div className="flex items-center justify-between pt-1">
-          <div className="text-[11px] text-neutral-400">
+        <div className="flex items-center justify-between pt-2">
+          <div className="text-xs text-neutral-400">
             {saveSuccess ? (
               <span className="inline-flex items-center gap-1 text-emerald-400 font-medium">
-                <Check size={13} strokeWidth={2.5} />
-                Nota guardada localmente
+                <Check size={14} strokeWidth={2.5} />
+                Nota guardada
               </span>
             ) : initialText ? (
               <span>Nota guardada</span>
             ) : (
-              <span className="text-neutral-500">Sin nota registrada</span>
+              <span className="text-neutral-400">Sin nota</span>
             )}
           </div>
 
@@ -85,10 +85,10 @@ function ExerciseNotesForm({ exerciseId, initialText, updatedAt }: ExerciseNotes
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="px-4 py-2 bg-white hover:bg-neutral-200 text-black text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            className="btn-primary min-h-12 px-5 text-sm"
           >
-            <Check size={14} strokeWidth={2.5} />
-            <span>{isSaving ? 'Guardando...' : 'Guardar'}</span>
+            <Check size={16} strokeWidth={2} />
+            <span>{isSaving ? 'Guardando...' : 'Guardar nota'}</span>
           </button>
         </div>
       </div>

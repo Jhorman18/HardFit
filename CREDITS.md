@@ -44,3 +44,7 @@ Supabase JS, etc.) conservan sus respectivas licencias de código abierto.
   entrega **«tal cual», sin garantías** de ningún tipo (ver cláusula de la licencia MIT).
 - Si eres **titular de derechos** de alguno de estos materiales y deseas que se **retire** el contenido o se
   **ajuste la atribución**, por favor **abre un issue** en este repositorio y se atenderá a la brevedad.
+
+## Tipografía
+
+- **Archivo** (Omnibus-Type), distribuida con la app mediante `@fontsource-variable/archivo`, bajo licencia **SIL Open Font License 1.1**.

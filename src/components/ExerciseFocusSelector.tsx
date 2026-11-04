@@ -44,14 +44,14 @@ export function ExerciseFocusSelector({
   return (
     <fieldset
       disabled={isSaving}
-      className={`bg-neutral-950 border border-neutral-800 rounded-xl p-3.5 space-y-3 ${className}`}
+      className={`space-y-3 ${className}`}
       aria-describedby={`${groupId}-description`}
     >
-      <legend className="px-1 text-[11px] uppercase font-bold text-neutral-300 tracking-wider">
-        Enfoque del ejercicio
+      <legend className="label-tech text-neutral-300">
+        Enfoque de la variante
       </legend>
       <p id={`${groupId}-description`} className="text-xs text-neutral-400">
-        Selecciona qué grupo muscular tendrá mayor protagonismo en esta variante.
+        Selecciona la zona o grupo muscular con mayor énfasis en la ejecución.
       </p>
 
       <div className="grid grid-cols-1 gap-2">
@@ -60,9 +60,10 @@ export function ExerciseFocusSelector({
           return (
             <label
               key={option.id}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border text-xs cursor-pointer transition ${isSelected
-                ? 'bg-neutral-900 border-white text-white'
-                : 'bg-neutral-900/50 border-neutral-800 text-neutral-300 hover:border-neutral-600'
+              className={`press min-h-12 flex items-center gap-3 px-3.5 py-2.5 rounded-md border text-sm cursor-pointer select-none ${
+                isSelected
+                  ? 'bg-surface-elevated border-accent text-white font-semibold'
+                  : 'bg-surface border-line text-neutral-300 hover:border-line-strong'
               } ${isSaving ? 'opacity-60 cursor-wait' : ''}`}
             >
               <input
@@ -71,15 +72,15 @@ export function ExerciseFocusSelector({
                 value={option.id}
                 checked={isSelected}
                 onChange={() => handleSelect(option.id)}
-                className="w-4 h-4 shrink-0"
+                className="w-5 h-5 shrink-0"
               />
-              <span className="font-semibold leading-snug">{option.label}</span>
+              <span className="leading-snug">{option.label}</span>
             </label>
           )
         })}
       </div>
 
-      {demo && <p className="text-xs text-neutral-400 leading-relaxed">{demo.placement}</p>}
+      {demo && <p className="text-xs text-neutral-400 leading-relaxed pt-1">{demo.placement}</p>}
       {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
     </fieldset>
   )

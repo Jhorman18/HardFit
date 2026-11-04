@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Kitaeru</string>
-    <string name="title_activity_main">Kitaeru</string>
+    <string name="app_name">HardFit</string>
+    <string name="title_activity_main">HardFit</string>
     <string name="package_name">com.replog.app</string>
     <string name="custom_url_scheme">com.replog.app</string>
 </resources>

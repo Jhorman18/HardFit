@@ -1,5 +1,5 @@
 {
-  "name": "kitaeru",
+  "name": "hardfit",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -20,6 +20,7 @@
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/local-notifications": "^8.3.1",
     "@capacitor/share": "^8.0.3",
+    "@fontsource-variable/archivo": "^5.3.0",
     "@supabase/supabase-js": "^2.118.0",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.6",

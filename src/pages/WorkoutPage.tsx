@@ -1,52 +1,52 @@
-import { getEntryWeightUnit, convertSetWeight, inputWeight, type WeightUnit } from '../utils/weightUnits'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
 import {
   Dumbbell,
   Plus,
   ClipboardList,
-  Check,
-  X,
-  Trophy,
-  AlertTriangle,
-  Timer,
-  ArrowLeftRight,
+  MoreVertical,
+  List,
+  Maximize2,
 } from 'lucide-react'
-import { db } from '../db'
 import { useWorkoutStore } from '../store'
 import { ExerciseSelectorModal } from '../components/ExerciseSelectorModal'
-import { ExerciseDemo } from '../components/ExerciseDemo'
 import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
 import { RestPicker } from '../components/RestPicker'
-import { formatRest } from '../utils/formatRest'
-import type { WorkoutSetEntry, Exercise } from '../types'
+import { RestTimerBar } from '../components/RestTimerBar'
+import { ScreenHeader, HeaderIconButton, Sheet } from '../components/ui'
+import { SheetView } from '../components/workout/SheetView'
+import { FocusView } from '../components/workout/FocusView'
+import { WorkoutMenuSheet } from '../components/workout/WorkoutMenuSheet'
+import { RestExpandedSheet } from '../components/workout/RestExpandedSheet'
+import {
+  useExerciseMap,
+  usePreviousHistoryMap,
+  useAppSettings,
+} from '../components/workout/useWorkoutData'
+import { db } from '../db'
+import { changeRoutineItemWeightUnit, getEntryWeightUnit, type WeightUnit } from '../utils/weightUnits'
+import { DEFAULT_BAR_KG } from '../utils/plates'
 
-function formatDurationSec(totalSec: number): string {
-  const m = Math.floor(totalSec / 60)
-  const s = totalSec % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
+type PickerState = { mode: 'global' } | { mode: 'entry'; entryIndex: number } | null
 
-function getSetNumberLabel(sets: WorkoutSetEntry[], index: number): string {
-  const currentSet = sets[index]
-  if (currentSet.type === 'warmup') {
-    let warmupCount = 0
-    for (let i = 0; i <= index; i++) {
-      if (sets[i].type === 'warmup') warmupCount++
-    }
-    const totalWarmups = sets.filter((s) => s.type === 'warmup').length
-    return totalWarmups > 1 ? `C${warmupCount}` : 'C'
-  } else {
-    let normalCount = 0
-    for (let i = 0; i <= index; i++) {
-      if (sets[i].type !== 'warmup') normalCount++
-    }
-    return String(normalCount)
+const VIEW_KEY = 'replog_workout_view'
+
+function readSavedView(): 'sheet' | 'focus' {
+  try {
+    const v = localStorage.getItem(VIEW_KEY)
+    return v === 'focus' ? 'focus' : 'sheet'
+  } catch {
+    return 'sheet'
   }
 }
 
-type PickerState = { mode: 'global' } | { mode: 'entry'; entryIndex: number } | null
+function saveView(view: 'sheet' | 'focus') {
+  try {
+    localStorage.setItem(VIEW_KEY, view)
+  } catch {
+    /* noop */
+  }
+}
 
 export function WorkoutPage() {
   const navigate = useNavigate()
@@ -54,36 +54,34 @@ export function WorkoutPage() {
   const {
     activeWorkout,
     startEmptyWorkout,
-    discardWorkout,
     finishWorkout,
     updateWorkoutName,
     updateWorkoutNotes,
     addExercise,
     replaceExercise,
-    removeExercise,
-    addSet,
-    updateSet,
-    toggleSetCompleted,
-    setSetType,
-    removeSet,
     setWorkoutRest,
     setEntryRest,
     setWorkoutWeightUnit,
     setEntryWeightUnit,
   } = useWorkoutStore()
 
-  const settings = useLiveQuery(() => db.settings.get('app'), [])
-  const exercises = useLiveQuery(() => db.exercises.toArray(), [])
-  const pastWorkouts = useLiveQuery(() => db.workouts.toArray(), [])
+  const settings = useAppSettings()
+  const exerciseMap = useExerciseMap()
+  const previousHistoryMap = usePreviousHistoryMap()
 
+  const [view, setView] = useState<'sheet' | 'focus'>(readSavedView)
+  const [focusEntry, setFocusEntry] = useState(0)
+  const [focusSet, setFocusSet] = useState(0)
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
-  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
-  const [elapsedTime, setElapsedTime] = useState('00:00')
   const [restPickerState, setRestPickerState] = useState<PickerState>(null)
   const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
   const [replacingEntryIndex, setReplacingEntryIndex] = useState<number | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [restExpanded, setRestExpanded] = useState(false)
+  const [elapsedTime, setElapsedTime] = useState('00:00')
 
-  const appUnit = (settings && 'units' in settings && settings.units) || 'kg'
+  const appUnit: WeightUnit = (settings && 'units' in settings && settings.units) || 'kg'
   const unit = activeWorkout?.weightUnit ?? appUnit
   const showRpe = !!(settings && 'showRpe' in settings && settings.showRpe)
   const appRestSeconds =
@@ -91,65 +89,69 @@ export function WorkoutPage() {
       ? settings.restSeconds
       : 120
   const efectivoGlobal = activeWorkout?.restSeconds ?? appRestSeconds
+  const barKg =
+    settings && 'barKg' in settings && typeof settings.barKg === 'number'
+      ? settings.barKg
+      : DEFAULT_BAR_KG
 
-  // Map of exercise details for fast lookup
-  const exerciseMap = useMemo(() => {
-    const map = new Map<string, Exercise>()
-    if (exercises) {
-      for (const ex of exercises) {
-        map.set(ex.id, ex)
-      }
-    }
-    return map
-  }, [exercises])
-
-  // Map of past exercise performance (most recent finished workout for each exerciseId)
-  const previousHistoryMap = useMemo(() => {
-    const map = new Map<string, WorkoutSetEntry[]>()
-    if (!pastWorkouts) return map
-
-    // Sort past workouts descending by startedAt
-    const finished = pastWorkouts
-      .filter((w) => w.finishedAt !== null)
-      .sort((a, b) => b.startedAt - a.startedAt)
-
-    for (const w of finished) {
-      if (!w.entries) continue
-      for (const entry of w.entries) {
-        if (!map.has(entry.exerciseId) && entry.sets && entry.sets.length > 0) {
-          map.set(entry.exerciseId, entry.sets)
-        }
-      }
-    }
-    return map
-  }, [pastWorkouts])
-
-  // Cronómetro de duración en vivo
   useEffect(() => {
     if (!activeWorkout) return
-
-    const updateStopwatch = () => {
+    const update = () => {
       const now = Date.now()
       const diffSec = Math.max(0, Math.floor((now - activeWorkout.startedAt) / 1000))
       const hours = Math.floor(diffSec / 3600)
       const minutes = Math.floor((diffSec % 3600) / 60)
       const seconds = diffSec % 60
-
       if (hours > 0) {
         setElapsedTime(
-          `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+          `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
         )
       } else {
-        setElapsedTime(
-          `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
-        )
+        setElapsedTime(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
       }
     }
-
-    updateStopwatch()
-    const interval = setInterval(updateStopwatch, 1000)
+    update()
+    const interval = setInterval(update, 1000)
     return () => clearInterval(interval)
   }, [activeWorkout])
+
+  const switchView = useCallback((v: 'sheet' | 'focus') => {
+    setView(v)
+    saveView(v)
+  }, [])
+
+  const openFoco = useCallback(
+    (entryIndex: number, setIndex: number) => {
+      setFocusEntry(entryIndex)
+      setFocusSet(setIndex)
+      switchView('focus')
+    },
+    [switchView]
+  )
+
+  // El cambio también queda en la rutina: en un gimnasio hay máquinas en kg y otras en lb.
+  const handleToggleEntryUnit = async (entryIndex: number) => {
+    const entry = activeWorkout?.entries[entryIndex]
+    if (!activeWorkout || !entry) return
+    const next: WeightUnit = getEntryWeightUnit(activeWorkout, entry, appUnit) === 'kg' ? 'lb' : 'kg'
+    setEntryWeightUnit(entryIndex, next)
+
+    if (!activeWorkout.routineId) return
+    try {
+      const routine = await db.routines.get(activeWorkout.routineId)
+      if (!routine) return
+      await db.routines.put({
+        ...routine,
+        items: routine.items.map((item) =>
+          item.exerciseId === entry.exerciseId
+            ? changeRoutineItemWeightUnit(item, routine.weightUnit ?? appUnit, next)
+            : item
+        ),
+      })
+    } catch (err) {
+      console.error('No se pudo guardar la unidad en la rutina:', err)
+    }
+  }
 
   const handleFinish = async () => {
     try {
@@ -162,11 +164,6 @@ export function WorkoutPage() {
     } catch (err) {
       console.error('Error al terminar entrenamiento:', err)
     }
-  }
-
-  const handleDiscard = async () => {
-    await discardWorkout()
-    setShowDiscardConfirm(false)
   }
 
   const handleAddExercises = (exerciseIds: string[]) => {
@@ -182,650 +179,162 @@ export function WorkoutPage() {
     }
   }
 
-  // Si no hay entreno activo
   if (!activeWorkout) {
     return (
-      <div className="p-4 space-y-6">
-        <div className="border-b border-neutral-800 pb-4">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Entrenar</h1>
-          <p className="text-sm text-neutral-400 mt-1">
-            Registro en vivo de series, repeticiones, cargas y descansos.
-          </p>
-        </div>
-
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-6 text-center space-y-5">
-          <div className="w-16 h-16 rounded-2xl bg-neutral-950 border border-neutral-800 text-white flex items-center justify-center mx-auto shadow-inner">
-            <Dumbbell size={32} className="text-white" />
-          </div>
-
-          <div>
-            <h2 className="text-lg font-bold text-white">Comenzar Sesión</h2>
-            <p className="text-xs text-neutral-400 mt-1.5 max-w-xs mx-auto">
-              Empieza un entrenamiento libre, agrega ejercicios de la biblioteca y registra tus
-              series en tiempo real con temporizador automático.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => startEmptyWorkout()}
-              className="w-full py-3.5 px-4 bg-white hover:bg-neutral-200 text-black rounded-xl text-sm font-bold transition shadow-lg flex items-center justify-center gap-2"
-            >
-              <Plus size={18} />
-              <span>Empezar entreno vacío</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/routines')}
-              className="w-full py-3 px-4 bg-neutral-800 hover:bg-neutral-750 text-white rounded-xl text-sm font-semibold transition border border-neutral-700 flex items-center justify-center gap-2"
-            >
-              <ClipboardList size={18} />
-              <span>Iniciar desde una rutina</span>
-            </button>
+      <div className="flex flex-col min-h-[100dvh]">
+        <ScreenHeader title="Entrenar" />
+        <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8">
+          <div className="w-full max-w-sm text-center space-y-6">
+            <div className="w-16 h-16 rounded-md bg-elevated border border-line flex items-center justify-center mx-auto">
+              <Dumbbell size={32} className="text-neutral-300" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Comenzar sesión</h2>
+              <p className="text-[15px] text-neutral-300 mt-2 max-w-xs mx-auto">
+                Empieza un entrenamiento libre, agrega ejercicios y registra tus series en tiempo real.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => startEmptyWorkout()}
+                className="btn-primary w-full"
+              >
+                <Plus size={18} strokeWidth={2} />
+                <span>Empezar entreno vacío</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/routines')}
+                className="btn-secondary w-full"
+              >
+                <ClipboardList size={18} strokeWidth={1.75} />
+                <span>Iniciar desde una rutina</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
     )
   }
 
-  // Formato para la columna "Anterior"
-  const formatPreviousSet = (
-    exercise: Exercise | undefined,
-    prevSet: WorkoutSetEntry | undefined,
-    unit: WeightUnit,
-  ): string => {
-    if (!prevSet) return '-'
-    prevSet = { ...prevSet, weight: prevSet.weight === undefined ? undefined : Number(inputWeight(prevSet.weight)) }
-    const type = exercise?.type ?? 'weight_reps'
-
-    switch (type) {
-      case 'weight_reps':
-        return `${prevSet.weight ?? 0} ${unit} × ${prevSet.reps ?? 0}`
-      case 'bodyweight_reps':
-        if (prevSet.weight && prevSet.weight > 0) {
-          return `+${prevSet.weight}${unit} × ${prevSet.reps ?? 0}`
-        }
-        return `${prevSet.reps ?? 0} reps`
-      case 'bodyweight_assisted':
-        return `-${prevSet.weight ?? 0}${unit} × ${prevSet.reps ?? 0}`
-      case 'duration':
-        return formatDurationSec(prevSet.durationSec ?? 0)
-      case 'distance': {
-        const distStr = `${prevSet.distanceM ?? 0}m`
-        const timeStr = prevSet.durationSec ? ` (${formatDurationSec(prevSet.durationSec)})` : ''
-        return `${distStr}${timeStr}`
-      }
-      default:
-        return '-'
-    }
-  }
-
   return (
-    <div className="p-4 space-y-5">
-      {/* Barra superior con cronómetro y acciones */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
-            <span className="text-xs uppercase font-bold tracking-wider text-white">
-              En Vivo
-            </span>
-            {activeWorkout.routineId && (
-              <span className="text-[10px] uppercase font-bold tracking-wider text-neutral-300 bg-neutral-800 border border-neutral-700 px-2 py-0.5 rounded-full">
-                Rutina
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-neutral-400">Duración:</span>
-            <span className="text-sm font-mono font-bold text-white bg-neutral-950 px-2 py-0.5 rounded border border-neutral-800">
-              {elapsedTime}
-            </span>
-          </div>
-        </div>
-
-        {/* Título editable de la sesión */}
-        <input
-          type="text"
-          value={activeWorkout.name}
-          onChange={(e) => updateWorkoutName(e.target.value)}
-          placeholder="Nombre del entreno..."
-          className="w-full bg-transparent text-xl font-extrabold text-white focus:outline-none border-b border-transparent focus:border-white pb-0.5 transition"
-        />
-
-        {/* Notas del entreno */}
-        <input
-          type="text"
-          value={activeWorkout.notes}
-          onChange={(e) => updateWorkoutNotes(e.target.value)}
-          placeholder="Notas de la sesión (ej. Buenas sensaciones en sentadilla)..."
-          className="w-full text-xs text-neutral-400 bg-neutral-950 border border-neutral-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-neutral-700 transition"
-        />
-
-        {/* Chip de descanso global del entreno */}
-        <div className="pt-0.5">
-          <button
-            type="button"
-            onClick={() => setRestPickerState({ mode: 'global' })}
-            aria-label="Configurar descanso y unidad global"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 rounded-xl text-xs font-semibold text-neutral-300 hover:text-white transition"
+    <div className="flex flex-col h-[100dvh]">
+      {/* Cabecera */}
+      <header className="shrink-0 flex items-center gap-1 px-1 pt-[env(safe-area-inset-top)] bg-surface border-b border-line min-h-14">
+        {view === 'focus' ? (
+          <HeaderIconButton
+            label="Cambiar a vista Hoja"
+            onClick={() => switchView('sheet')}
           >
-            <Timer size={14} className="text-neutral-400" />
-            <span>Descanso: {formatRest(efectivoGlobal)} · {unit}</span>
-          </button>
+            <List size={22} strokeWidth={1.75} />
+          </HeaderIconButton>
+        ) : null}
+
+        <div className="flex-1 min-w-0 pl-3">
+          {view === 'sheet' ? (
+            <>
+              <input
+                type="text"
+                value={activeWorkout.name}
+                onChange={(e) => updateWorkoutName(e.target.value)}
+                placeholder="Nombre del entreno"
+                className="w-full bg-transparent text-[17px] font-semibold text-white focus:outline-none truncate"
+                aria-label="Nombre del entreno"
+              />
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="num text-sm text-neutral-300">{elapsedTime}</span>
+                {activeWorkout.routineId && (
+                  <span className="label-tech text-neutral-400">Rutina</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="py-1">
+              <h1 className="text-[17px] font-semibold text-white truncate">
+                {activeWorkout.name || 'Entreno activo'}
+              </h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="label-tech text-neutral-400">Modo Foco</span>
+                <span className="text-neutral-400 text-xs">·</span>
+                <span className="num text-sm text-neutral-300">{elapsedTime}</span>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Lista de ejercicios en el entreno */}
-      <div className="space-y-4">
-        {activeWorkout.entries.map((entry, entryIndex) => {
-          const exercise = exerciseMap.get(entry.exerciseId)
-          const exerciseType = exercise?.type ?? 'weight_reps'
-          const unit = getEntryWeightUnit(activeWorkout, entry, appUnit)
-          const prevSets = previousHistoryMap.get(entry.exerciseId)?.map(set => convertSetWeight(set, unit))
+        {view === 'sheet' && (
+          <HeaderIconButton
+            label="Cambiar a vista Foco"
+            onClick={() => switchView('focus')}
+          >
+            <Maximize2 size={20} strokeWidth={1.75} />
+          </HeaderIconButton>
+        )}
 
-          return (
-            <div
-              key={`${entry.exerciseId}-${entryIndex}`}
-              className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm"
-            >
-              {/* Encabezado del ejercicio */}
-              <div className="p-3.5 border-b border-neutral-800 bg-neutral-900/90 flex items-start justify-between gap-2">
-                <div className="flex items-start gap-3 min-w-0">
-                  <ExerciseDemo
-                    exerciseId={entry.exerciseId}
-                    variant="thumb"
-                    alt={exercise?.name ?? 'Ejercicio'}
-                    onClick={() => setPreviewExerciseId(entry.exerciseId)}
-                  />
-                  <div className="min-w-0">
-                  <h3
-                    onClick={() => setPreviewExerciseId(entry.exerciseId)}
-                    className="font-bold text-white text-base leading-snug cursor-pointer hover:text-neutral-300 transition"
-                  >
-                    {exercise?.name ?? 'Ejercicio'}
-                  </h3>
-                  <div className="flex flex-wrap items-center gap-2 text-xs mt-1">
-                    <span className="text-white font-medium">
-                      {exercise?.muscleGroup ?? 'General'}
-                    </span>
-                    <span className="text-neutral-600">•</span>
-                    <span className="text-neutral-400">{exercise?.equipment ?? 'Equipo'}</span>
-                    <span className="text-neutral-600">•</span>
-                    <button
-                      type="button"
-                      onClick={() => setRestPickerState({ mode: 'entry', entryIndex })}
-                      aria-label={'Configurar descanso y unidad de ' + (exercise?.name ?? 'ejercicio')}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-[11px] font-medium text-neutral-300 hover:text-white transition"
-                    >
-                      <Timer size={12} className="text-neutral-400" />
-                      <span>
-                        {entry.restSeconds === undefined
-                          ? `Descanso: Global (${formatRest(efectivoGlobal)})`
-                          : `Descanso: ${formatRest(entry.restSeconds)}`}
-                        {exerciseType !== 'duration' && exerciseType !== 'distance' && <> · {unit}</>}
-                      </span>
-                    </button>
-                  </div>
-                  </div>
-                </div>
+        <HeaderIconButton label="Menú del entreno" onClick={() => setMenuOpen(true)}>
+          <MoreVertical size={20} strokeWidth={1.75} />
+        </HeaderIconButton>
+      </header>
 
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setReplacingEntryIndex(entryIndex)
-                      setIsSelectorOpen(true)
-                    }}
-                    className="px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-750 text-neutral-300 hover:text-white flex items-center gap-1.5 text-xs font-medium transition border border-neutral-700/60"
-                    title="Cambiar este ejercicio por otro manteniendo las series"
-                    aria-label="Cambiar ejercicio"
-                  >
-                    <ArrowLeftRight size={13} />
-                    <span>Cambiar</span>
-                  </button>
+      {/* Contenido principal */}
+      {view === 'sheet' ? (
+        <>
+          <SheetView
+            workout={activeWorkout}
+            exerciseMap={exerciseMap}
+            previousHistoryMap={previousHistoryMap}
+            appUnit={appUnit}
+            efectivoGlobal={efectivoGlobal}
+            barKg={barKg}
+            onOpenFoco={openFoco}
+            onToggleUnit={handleToggleEntryUnit}
+            onOpenSelector={() => setIsSelectorOpen(true)}
+            onOpenReplace={(idx) => {
+              setReplacingEntryIndex(idx)
+              setIsSelectorOpen(true)
+            }}
+            onOpenRestPicker={(mode) => {
+              if (mode === 'global') setRestPickerState({ mode: 'global' })
+              else setRestPickerState({ mode: 'entry', entryIndex: mode.entryIndex })
+            }}
+            onOpenPreview={(id) => setPreviewExerciseId(id)}
+          />
 
-                  <button
-                    type="button"
-                    onClick={() => removeExercise(entryIndex)}
-                    className="text-neutral-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-neutral-800 transition"
-                    title="Eliminar ejercicio"
-                    aria-label="Eliminar ejercicio"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Tabla de series */}
-              <div className="p-3 overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="text-[10px] uppercase font-bold text-neutral-400 border-b border-neutral-800">
-                      <th className="pb-2 w-10 text-center">Serie</th>
-                      <th className="pb-2 min-w-[70px] text-center">Anterior</th>
-
-                      {/* Columnas dinámicas según tipo de ejercicio */}
-                      {exerciseType === 'weight_reps' && (
-                        <>
-                          <th className="pb-2 w-20 text-center">{unit.toUpperCase()}</th>
-                          <th className="pb-2 w-16 text-center">Reps</th>
-                        </>
-                      )}
-                      {exerciseType === 'bodyweight_reps' && (
-                        <>
-                          <th className="pb-2 w-20 text-center">+{unit.toUpperCase()}</th>
-                          <th className="pb-2 w-16 text-center">Reps</th>
-                        </>
-                      )}
-                      {exerciseType === 'bodyweight_assisted' && (
-                        <>
-                          <th className="pb-2 w-20 text-center">-{unit.toUpperCase()}</th>
-                          <th className="pb-2 w-16 text-center">Reps</th>
-                        </>
-                      )}
-                      {exerciseType === 'duration' && (
-                        <>
-                          <th className="pb-2 w-16 text-center">Min</th>
-                          <th className="pb-2 w-16 text-center">Seg</th>
-                        </>
-                      )}
-                      {exerciseType === 'distance' && (
-                        <>
-                          <th className="pb-2 w-20 text-center">Metros</th>
-                          <th className="pb-2 w-20 text-center">Tiempo</th>
-                        </>
-                      )}
-
-                      {showRpe && <th className="pb-2 w-14 text-center">RPE</th>}
-                      <th className="pb-2 w-10 text-center">
-                        <Check size={12} className="mx-auto" />
-                      </th>
-                      <th className="pb-2 w-7 text-center"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-800/40">
-                    {entry.sets.map((set, setIndex) => {
-                      const prevSet = prevSets ? prevSets[setIndex] : undefined
-                      const isWarmup = set.type === 'warmup'
-                      const setLabel = getSetNumberLabel(entry.sets, setIndex)
-
-                      return (
-                        <tr
-                          key={setIndex}
-                          className={`transition ${
-                            set.completed ? 'bg-neutral-800/40' : 'hover:bg-neutral-800/20'
-                          }`}
-                        >
-                          {/* Columna Serie con toggle Normal/Calentamiento */}
-                          <td className="py-2 px-1 text-center">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setSetType(entryIndex, setIndex, isWarmup ? 'normal' : 'warmup')
-                              }
-                              className={`w-6 h-6 rounded-md text-xs font-bold transition flex items-center justify-center mx-auto ${
-                                isWarmup
-                                  ? 'bg-neutral-800 text-neutral-300 border border-neutral-700'
-                                  : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
-                              }`}
-                              title={
-                                isWarmup
-                                  ? 'Serie de calentamiento (click para cambiar a normal)'
-                                  : 'Serie normal (click para marcar como calentamiento)'
-                              }
-                            >
-                              {setLabel}
-                            </button>
-                          </td>
-
-                          {/* Columna Anterior */}
-                          <td className="py-2 px-1 text-center text-[11px] text-neutral-400 font-mono whitespace-nowrap">
-                            {formatPreviousSet(exercise, prevSet, unit)}
-                          </td>
-
-                          {/* Inputs según tipo de ejercicio */}
-                          {exerciseType === 'weight_reps' && (
-                            <>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  placeholder={
-                                    prevSet?.weight !== undefined ? String(inputWeight(prevSet.weight)) : '-'
-                                  }
-                                  value={inputWeight(convertSetWeight(set, unit).weight)}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      weight:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  placeholder={
-                                    prevSet?.reps !== undefined ? String(prevSet.reps) : '-'
-                                  }
-                                  value={set.reps ?? ''}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      reps:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                            </>
-                          )}
-
-                          {exerciseType === 'bodyweight_reps' && (
-                            <>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  placeholder={
-                                    prevSet?.weight !== undefined ? `+${prevSet.weight}` : '+0'
-                                  }
-                                  value={inputWeight(convertSetWeight(set, unit).weight)}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      weight:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  placeholder={
-                                    prevSet?.reps !== undefined ? String(prevSet.reps) : '-'
-                                  }
-                                  value={set.reps ?? ''}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      reps:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                            </>
-                          )}
-
-                          {exerciseType === 'bodyweight_assisted' && (
-                            <>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  placeholder={
-                                    prevSet?.weight !== undefined ? `-${prevSet.weight}` : '-0'
-                                  }
-                                  value={inputWeight(convertSetWeight(set, unit).weight)}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      weight:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  placeholder={
-                                    prevSet?.reps !== undefined ? String(prevSet.reps) : '-'
-                                  }
-                                  value={set.reps ?? ''}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      reps:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                            </>
-                          )}
-
-                          {exerciseType === 'duration' && (
-                            <>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="0"
-                                  value={
-                                    set.durationSec !== undefined
-                                      ? Math.floor(set.durationSec / 60)
-                                      : ''
-                                  }
-                                  onChange={(e) => {
-                                    const m = e.target.value === '' ? 0 : Number(e.target.value)
-                                    const s = (set.durationSec ?? 0) % 60
-                                    updateSet(entryIndex, setIndex, { durationSec: m * 60 + s })
-                                  }}
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="59"
-                                  placeholder="0"
-                                  value={
-                                    set.durationSec !== undefined ? set.durationSec % 60 : ''
-                                  }
-                                  onChange={(e) => {
-                                    const s = e.target.value === '' ? 0 : Number(e.target.value)
-                                    const m = Math.floor((set.durationSec ?? 0) / 60)
-                                    updateSet(entryIndex, setIndex, { durationSec: m * 60 + s })
-                                  }}
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                            </>
-                          )}
-
-                          {exerciseType === 'distance' && (
-                            <>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="10"
-                                  placeholder={
-                                    prevSet?.distanceM !== undefined
-                                      ? String(prevSet.distanceM)
-                                      : '0'
-                                  }
-                                  value={set.distanceM ?? ''}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      distanceM:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                              <td className="py-2 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  placeholder="Seg"
-                                  value={set.durationSec ?? ''}
-                                  onChange={(e) =>
-                                    updateSet(entryIndex, setIndex, {
-                                      durationSec:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-sm font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                            </>
-                          )}
-
-                          {/* Columna RPE (opcional, según Ajustes) */}
-                          {showRpe && (
-                            <td className="py-2 px-1">
-                              <input
-                                type="number"
-                                min="1"
-                                max="10"
-                                step="0.5"
-                                placeholder="-"
-                                value={set.rpe ?? ''}
-                                onChange={(e) =>
-                                  updateSet(entryIndex, setIndex, {
-                                    rpe: e.target.value === '' ? undefined : Number(e.target.value),
-                                  })
-                                }
-                                className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-xs text-neutral-300 focus:outline-none focus:border-white"
-                              />
-                            </td>
-                          )}
-
-                          {/* Checkbox completada */}
-                          <td className="py-2 px-1 text-center">
-                            <button
-                              type="button"
-                              onClick={() => toggleSetCompleted(entryIndex, setIndex)}
-                              className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs transition mx-auto ${
-                                set.completed
-                                  ? 'bg-white text-black shadow-md'
-                                  : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 border border-neutral-700'
-                              }`}
-                              title={
-                                set.completed ? 'Marcar como pendiente' : 'Marcar como completada'
-                              }
-                            >
-                              <Check size={14} strokeWidth={2.5} />
-                            </button>
-                          </td>
-
-                          {/* Botón eliminar serie */}
-                          <td className="py-2 px-1 text-center">
-                            {entry.sets.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeSet(entryIndex, setIndex)}
-                                className="text-neutral-500 hover:text-red-400 transition p-1"
-                                title="Eliminar serie"
-                                aria-label="Eliminar serie"
-                              >
-                                <X size={14} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-
-                {/* Botón añadir serie al ejercicio */}
-                <button
-                  type="button"
-                  onClick={() => addSet(entryIndex)}
-                  className="w-full mt-3 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 rounded-xl text-xs font-semibold text-neutral-300 hover:text-white transition flex items-center justify-center gap-1.5"
-                >
-                  <Plus size={14} />
-                  <span>Añadir serie</span>
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-
-      {/* Botón grande para añadir ejercicios */}
-      <button
-        type="button"
-        onClick={() => setIsSelectorOpen(true)}
-        className="w-full py-3 bg-neutral-900 hover:bg-neutral-800 border border-dashed border-neutral-700 hover:border-neutral-500 text-white rounded-2xl text-sm font-semibold transition flex items-center justify-center gap-2"
-      >
-        <Plus size={18} />
-        <span>Añadir ejercicio</span>
-      </button>
-
-      {/* Botones de acción principales: Terminar y Descartar */}
-      <div className="pt-2 space-y-2">
-        <button
-          type="button"
-          onClick={handleFinish}
-          className="w-full py-3.5 px-4 bg-white hover:bg-neutral-200 text-black rounded-xl text-sm font-extrabold transition shadow-lg flex items-center justify-center gap-2"
-        >
-          <Trophy size={18} />
-          <span>Terminar entreno</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowDiscardConfirm(true)}
-          className="w-full py-2.5 px-3 bg-red-950/20 hover:bg-red-950/40 border border-red-900/40 text-red-400 hover:text-red-300 rounded-xl text-xs font-medium transition text-center"
-        >
-          Descartar entreno
-        </button>
-      </div>
-
-      {/* Modal de confirmación para descartar */}
-      {showDiscardConfirm && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-xs w-full space-y-4 text-center shadow-2xl">
-            <AlertTriangle size={32} className="text-red-400 mx-auto" />
-            <div>
-              <h3 className="font-bold text-white text-base">¿Descartar entrenamiento?</h3>
-              <p className="text-xs text-neutral-400 mt-1">
-                Se perderá todo el progreso de la sesión actual y no se guardará en el historial.
-              </p>
-            </div>
-            <div className="flex gap-2">
+          {/* Zona inferior fija en Hoja */}
+          <div className="shrink-0 px-4 pb-[env(safe-area-inset-bottom)] bg-black border-t border-line">
+            <RestTimerBar onExpand={() => setRestExpanded(true)} />
+            <div className="py-2">
               <button
                 type="button"
-                onClick={() => setShowDiscardConfirm(false)}
-                className="flex-1 py-2 bg-neutral-800 hover:bg-neutral-750 text-neutral-300 rounded-xl text-xs font-medium transition"
+                onClick={handleFinish}
+                className="btn-primary w-full"
               >
-                Continuar
-              </button>
-              <button
-                type="button"
-                onClick={handleDiscard}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition shadow-md"
-              >
-                Sí, descartar
+                Terminar entreno
               </button>
             </div>
           </div>
-        </div>
+        </>
+      ) : (
+        <FocusView
+          workout={activeWorkout}
+          exerciseMap={exerciseMap}
+          previousHistoryMap={previousHistoryMap}
+          appUnit={appUnit}
+          showRpe={showRpe}
+          barKg={barKg}
+          focusEntry={focusEntry}
+          focusSet={focusSet}
+          onChangeFocus={(ei, si) => {
+            setFocusEntry(ei)
+            setFocusSet(si)
+          }}
+          onFinishWorkout={handleFinish}
+          onToggleUnit={handleToggleEntryUnit}
+        />
       )}
 
-      {/* Selector modal de ejercicios */}
+      {/* Modales compartidos */}
       <ExerciseSelectorModal
         isOpen={isSelectorOpen}
         onClose={() => {
@@ -835,22 +344,37 @@ export function WorkoutPage() {
         onSelectExercises={handleAddExercises}
       />
 
-      {/* Selector modal de descanso */}
       {restPickerState && (
         <RestPicker
           isOpen={restPickerState !== null}
           title={
             restPickerState.mode === 'global'
               ? 'Descanso y unidad global'
-              : (exerciseMap.get(activeWorkout.entries[restPickerState.entryIndex]?.exerciseId)?.name ?? 'Ejercicio')
+              : exerciseMap.get(
+                  activeWorkout.entries[restPickerState.entryIndex]?.exerciseId
+                )?.name ?? 'Ejercicio'
           }
-          currentWeightUnit={restPickerState.mode === 'global'
-            ? unit
-            : ['duration', 'distance'].includes(exerciseMap.get(activeWorkout.entries[restPickerState.entryIndex]?.exerciseId)?.type ?? '')
-              ? undefined
-              : getEntryWeightUnit(activeWorkout, activeWorkout.entries[restPickerState.entryIndex], appUnit)}
+          currentWeightUnit={
+            restPickerState.mode === 'global'
+              ? unit
+              : ['duration', 'distance'].includes(
+                    exerciseMap.get(
+                      activeWorkout.entries[restPickerState.entryIndex]?.exerciseId
+                    )?.type ?? ''
+                  )
+                ? undefined
+                : getEntryWeightUnit(
+                    activeWorkout,
+                    activeWorkout.entries[restPickerState.entryIndex],
+                    appUnit
+                  )
+          }
           globalWeightUnit={unit}
-          weightUnitOverride={restPickerState.mode === 'entry' ? activeWorkout.entries[restPickerState.entryIndex]?.weightUnit : undefined}
+          weightUnitOverride={
+            restPickerState.mode === 'entry'
+              ? activeWorkout.entries[restPickerState.entryIndex]?.weightUnit
+              : undefined
+          }
           onWeightUnitChange={(selected) => {
             if (restPickerState.mode === 'global') setWorkoutWeightUnit(selected ?? appUnit)
             else setEntryWeightUnit(restPickerState.entryIndex, selected)
@@ -858,7 +382,8 @@ export function WorkoutPage() {
           currentSeconds={
             restPickerState.mode === 'global'
               ? efectivoGlobal
-              : (activeWorkout.entries[restPickerState.entryIndex]?.restSeconds ?? efectivoGlobal)
+              : activeWorkout.entries[restPickerState.entryIndex]?.restSeconds ??
+                efectivoGlobal
           }
           allowGlobal={restPickerState.mode === 'entry'}
           onSelect={(seconds) => {
@@ -876,12 +401,53 @@ export function WorkoutPage() {
           onClose={() => setRestPickerState(null)}
         />
       )}
-      {/* Modal de vista previa del ejercicio */}
+
       {previewExerciseId && (
         <ExercisePreviewModal
           exerciseId={previewExerciseId}
           onClose={() => setPreviewExerciseId(null)}
           onAdd={() => setPreviewExerciseId(null)}
+        />
+      )}
+
+      {menuOpen && (
+        <WorkoutMenuSheet
+          onClose={() => setMenuOpen(false)}
+          onAddExercise={() => setIsSelectorOpen(true)}
+          onOpenRestPicker={() => setRestPickerState({ mode: 'global' })}
+          onOpenNotes={() => setNotesOpen(true)}
+          onFinishWorkout={handleFinish}
+          onDiscarded={() => navigate('/')}
+          workoutName={activeWorkout.name}
+          restSeconds={efectivoGlobal}
+          unit={unit}
+        />
+      )}
+
+      {notesOpen && (
+        <Sheet title="Notas de la sesión" onClose={() => setNotesOpen(false)}>
+          <div className="space-y-4 py-2">
+            <textarea
+              value={activeWorkout.notes}
+              onChange={(e) => updateWorkoutNotes(e.target.value)}
+              placeholder="Sensaciones generales, descanso, fatiga..."
+              rows={4}
+              className="w-full field py-2 resize-none"
+            />
+            <button
+              type="button"
+              onClick={() => setNotesOpen(false)}
+              className="btn-primary w-full"
+            >
+              Guardar
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {restExpanded && (
+        <RestExpandedSheet
+          onClose={() => setRestExpanded(false)}
         />
       )}
     </div>

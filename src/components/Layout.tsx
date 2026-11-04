@@ -1,31 +1,51 @@
 import { useEffect } from 'react'
-import { useWorkoutStore } from '../store/workoutStore'
-import { Outlet, NavLink } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import {
-  Home,
-  Dumbbell,
-  History,
-  ClipboardList,
-  BookOpen,
-  BarChart3,
-  Settings,
-} from 'lucide-react'
-import { RestTimerBar } from './RestTimerBar'
-import { HealthOnboardingModal } from './HealthOnboardingModal'
+import { FileText, History, Home, LineChart } from 'lucide-react'
+import { useWorkoutStore } from '../store/workoutStore'
 import { db } from '../db'
+import { formatClock } from '../utils/format'
+import { useRestTimeLeft } from '../utils/useRestTimeLeft'
+import { HealthOnboardingModal } from './HealthOnboardingModal'
+import { RestAlarm } from './RestAlarm'
+import { DumbbellIcon } from './ui'
 
 const NAV_ITEMS = [
-  { to: '/', label: 'Inicio', Icon: Home },
-  { to: '/workout', label: 'Entrenar', Icon: Dumbbell },
+  { to: '/', label: 'Hoy', Icon: Home },
+  { to: '/routines', label: 'Rutinas', Icon: FileText },
   { to: '/history', label: 'Historial', Icon: History },
-  { to: '/routines', label: 'Rutinas', Icon: ClipboardList },
-  { to: '/exercises', label: 'Ejercicios', Icon: BookOpen },
-  { to: '/stats', label: 'Progreso', Icon: BarChart3 },
-  { to: '/settings', label: 'Ajustes', Icon: Settings },
+  { to: '/stats', label: 'Progreso', Icon: LineChart },
 ]
 
+function navItemClass({ isActive }: { isActive: boolean }) {
+  return `press flex-1 min-h-[72px] flex flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
+    isActive ? 'text-accent' : 'text-neutral-400'
+  }`
+}
+
+function ResumeBar({ name }: { name: string }) {
+  const navigate = useNavigate()
+  const timeLeft = useRestTimeLeft()
+
+  return (
+    <button
+      type="button"
+      onClick={() => navigate('/workout')}
+      className="press w-full min-h-12 flex items-center gap-3 px-4 py-1 text-left bg-elevated border-t border-accent"
+    >
+      <span className="w-2 h-2 shrink-0 rounded-full bg-accent" aria-hidden="true" />
+      <span className="flex-1 min-w-0">
+        <span className="label-tech block">Entreno en curso</span>
+        <span className="block text-sm font-semibold text-white truncate">{name}</span>
+      </span>
+      {timeLeft > 0 && <span className="num text-xl text-accent">{formatClock(timeLeft)}</span>}
+    </button>
+  )
+}
+
 export function Layout() {
+  const { pathname } = useLocation()
+  const activeWorkout = useWorkoutStore((state) => state.activeWorkout)
   const settings = useLiveQuery(async () => {
     const s = await db.settings.get('app')
     return s && 'units' in s ? s : undefined
@@ -36,62 +56,54 @@ export function Layout() {
   }, [settings])
 
   const showHealthOnboarding = settings !== undefined && settings.healthOnboarded !== true
+  // Durante el entreno, la pantalla es toda para la serie.
+  const immersive = pathname === '/workout' && activeWorkout !== null
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center">
-      {/* Marco contenedor móvil centrado */}
-      <div className="w-full max-w-md min-h-screen flex flex-col bg-black border-x border-neutral-800 shadow-2xl relative">
-        {/* Barra superior */}
-        <header className="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-neutral-800 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <img
-              src="/icon-192.png"
-              alt="Kitaeru"
-              className="w-8 h-8 rounded-lg border border-neutral-800 bg-[#ffffff] object-contain shadow-sm"
-            />
-            <div>
-              <span className="font-extrabold tracking-tight text-white text-base">Kitaeru</span>
-              <span className="ml-1.5 text-[10px] uppercase font-semibold text-neutral-300 bg-neutral-900 border border-neutral-700 px-1.5 py-0.5 rounded">
-                Local
-              </span>
-            </div>
-          </div>
-          <div className="text-xs text-neutral-400 font-mono">v0.1</div>
-        </header>
-
-        {/* Contenido de ruta con espacio inferior para el footer fijo */}
-        <main className="flex-1 pb-24">
+    <div className="min-h-[100dvh] bg-black text-white flex flex-col items-center">
+      <div className="w-full max-w-md min-h-[100dvh] flex flex-col bg-black relative">
+        <main
+          className={`flex-1 flex flex-col ${immersive ? '' : 'pb-[calc(128px+env(safe-area-inset-bottom))]'}`}
+        >
           <Outlet />
         </main>
 
-        {/* Temporizador de descanso flotante */}
-        <RestTimerBar />
+        <RestAlarm />
 
-        {/* Modal de bienvenida / perfil de salud si aún no se ha completado */}
         {showHealthOnboarding && <HealthOnboardingModal settings={settings} />}
 
-        {/* Barra de navegación inferior fija estilo app móvil */}
-        <nav className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="w-full max-w-md bg-neutral-950/95 backdrop-blur-md border-t border-neutral-800 px-1 py-1.5 flex justify-around items-center pointer-events-auto shadow-lg">
-            {NAV_ITEMS.map(({ to, label, Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/'}
-                className={({ isActive }) =>
-                  `flex flex-col items-center justify-center py-1 px-2 rounded-xl transition duration-150 ${
-                    isActive
-                      ? 'text-white font-bold bg-neutral-800'
-                      : 'text-neutral-400 hover:text-neutral-200'
-                  }`
-                }
+        {!immersive && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+            <div className="w-full max-w-md pointer-events-auto">
+              {activeWorkout && <ResumeBar name={activeWorkout.name} />}
+              <nav
+                aria-label="Navegación principal"
+                className="flex bg-surface border-t border-line pb-[env(safe-area-inset-bottom)]"
               >
-                <Icon size={18} strokeWidth={2} className="mb-0.5" />
-                <span className="text-[10px] tracking-tight">{label}</span>
-              </NavLink>
-            ))}
+                {NAV_ITEMS.slice(0, 2).map(({ to, label, Icon }) => (
+                  <NavLink key={to} to={to} end={to === '/'} className={navItemClass}>
+                    <Icon size={24} strokeWidth={1.75} />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+                <NavLink to="/workout" className={(state) => `${navItemClass(state)} relative`}>
+                  <span className="absolute -top-5 left-1/2 -ml-7 w-14 h-14 flex items-center justify-center rounded-full bg-accent text-accent-fg">
+                    <DumbbellIcon size={28} />
+                  </span>
+                  {/* Hueco del icono: deja «Entrenar» a la altura de las demás etiquetas. */}
+                  <span className="h-6" aria-hidden="true" />
+                  <span>Entrenar</span>
+                </NavLink>
+                {NAV_ITEMS.slice(2).map(({ to, label, Icon }) => (
+                  <NavLink key={to} to={to} className={navItemClass}>
+                    <Icon size={24} strokeWidth={1.75} />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
           </div>
-        </nav>
+        )}
       </div>
     </div>
   )

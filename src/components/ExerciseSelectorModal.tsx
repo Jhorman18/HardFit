@@ -61,12 +61,16 @@ interface ExerciseSelectorModalProps {
   isOpen: boolean
   onClose: () => void
   onSelectExercises: (exerciseIds: string[]) => void
+  title?: string
+  subtitle?: string
 }
 
 export function ExerciseSelectorModal({
   isOpen,
   onClose,
   onSelectExercises,
+  title = 'Añadir ejercicios',
+  subtitle = 'Toca un ejercicio para añadirlo a tu entrenamiento.',
 }: ExerciseSelectorModalProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMuscle, setSelectedMuscle] = useState('Todos')
@@ -136,37 +140,35 @@ export function ExerciseSelectorModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-center p-0 sm:p-4">
-      <div className="w-full max-w-md h-full sm:h-[90vh] flex flex-col bg-black sm:border border-neutral-800 sm:rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/80 flex justify-center p-0 sm:p-4">
+      <div className="w-full max-w-md h-full sm:h-[90vh] flex flex-col bg-black sm:border border-line sm:rounded-lg overflow-hidden">
         {/* Encabezado */}
-        <div className="p-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-900/60">
+        <div className="p-4 border-b border-line flex items-center justify-between bg-surface">
           <div>
-            <h2 className="text-lg font-bold text-white">Añadir Ejercicios</h2>
-            <p className="text-xs text-neutral-400">
-              Toca un ejercicio para añadirlo a tu entrenamiento.
-            </p>
+            <h2 className="text-lg font-bold text-white">{title}</h2>
+            <p className="text-xs text-neutral-400">{subtitle}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition"
+            className="press min-w-12 min-h-12 rounded-md bg-elevated text-neutral-400 hover:text-white flex items-center justify-center"
             aria-label="Cerrar"
           >
-            <X size={18} />
+            <X size={18} strokeWidth={1.75} />
           </button>
         </div>
 
         {/* Buscador */}
-        <div className="p-3 border-b border-neutral-800/80 bg-black space-y-2">
+        <div className="p-3 border-b border-line bg-black space-y-2">
           <div className="relative">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
-              <Search size={16} />
+              <Search size={16} strokeWidth={1.75} />
             </span>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               placeholder="Buscar por nombre (ej. Press, Sentadilla)..."
-              className="w-full pl-9 pr-8 py-2 bg-neutral-900 border border-neutral-800 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white transition"
+              className="w-full pl-9 pr-8 field"
             />
             {searchQuery && (
               <button
@@ -174,7 +176,7 @@ export function ExerciseSelectorModal({
                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-white"
                 aria-label="Limpiar búsqueda"
               >
-                <X size={14} />
+                <X size={14} strokeWidth={1.75} />
               </button>
             )}
           </div>
@@ -188,10 +190,10 @@ export function ExerciseSelectorModal({
                   key={muscle}
                   type="button"
                   onClick={() => handleMuscleChange(muscle)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition border ${
+                  className={`press px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap border ${
                     isSelected
-                      ? 'bg-white text-black font-semibold border-white shadow-sm'
-                      : 'bg-neutral-900 text-neutral-400 hover:text-white border-neutral-800'
+                      ? 'bg-accent text-accent-fg font-semibold border-accent'
+                      : 'bg-elevated text-neutral-400 hover:text-white border-line'
                   }`}
                 >
                   {muscle}
@@ -202,7 +204,7 @@ export function ExerciseSelectorModal({
 
           {/* Filtros de equipo */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            <span className="text-xs text-neutral-400 font-medium shrink-0 mr-1">Equipo:</span>
+            <span className="label-tech shrink-0 mr-1">Equipo:</span>
             {EQUIPMENT_FILTERS.map((filter) => {
               const isSelected = selectedEquipment === filter
               return (
@@ -210,10 +212,10 @@ export function ExerciseSelectorModal({
                   key={filter}
                   type="button"
                   onClick={() => handleEquipmentChange(filter)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition border ${
+                  className={`press px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap border ${
                     isSelected
-                      ? 'bg-white text-black font-semibold border-white shadow-sm'
-                      : 'bg-neutral-900 text-neutral-400 hover:text-white border-neutral-800'
+                      ? 'bg-accent text-accent-fg font-semibold border-accent'
+                      : 'bg-elevated text-neutral-400 hover:text-white border-line'
                   }`}
                 >
                   {filter}
@@ -224,7 +226,7 @@ export function ExerciseSelectorModal({
         </div>
 
         {/* Contador */}
-        <div className="px-4 py-1.5 text-xs text-neutral-400 bg-neutral-950/60 border-b border-neutral-800/40 flex items-center justify-between">
+        <div className="px-4 py-1.5 text-xs text-neutral-400 bg-surface border-b border-line flex items-center justify-between">
           <span>
             {exercises ? (
               <>
@@ -256,22 +258,22 @@ export function ExerciseSelectorModal({
                   <div
                     key={exercise.id}
                     onClick={() => setPreviewExerciseId(exercise.id)}
-                    className="p-3 rounded-xl border transition cursor-pointer flex items-center justify-between gap-3 active:scale-[0.99] bg-neutral-900 hover:bg-neutral-800/80 border-neutral-800 group"
+                    className="p-3 rounded-md border cursor-pointer flex items-center justify-between gap-3 bg-surface hover:bg-elevated border-line group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="shrink-0 rounded-xl overflow-hidden">
+                      <div className="shrink-0 rounded-md overflow-hidden">
                         <ExerciseDemo exerciseId={exercise.id} variant="thumb" alt={exercise.name} />
                       </div>
                       <div className="space-y-1 min-w-0">
-                        <div className="font-semibold text-white text-sm leading-snug truncate group-hover:text-neutral-200 transition">
+                        <div className="font-semibold text-white text-sm leading-snug truncate group-hover:text-neutral-200">
                           {exercise.name}
                         </div>
                         <div className="flex items-center gap-2 text-xs">
                           <span className="text-white font-medium">{exercise.muscleGroup}</span>
-                          <span className="text-neutral-600">•</span>
+                          <span className="text-neutral-400">•</span>
                           <span className="text-neutral-400">{exercise.equipment}</span>
-                          <span className="text-neutral-600">•</span>
-                          <span className="text-neutral-500">{formatExerciseType(exercise.type)}</span>
+                          <span className="text-neutral-400">•</span>
+                          <span className="text-neutral-400">{formatExerciseType(exercise.type)}</span>
                         </div>
                       </div>
                     </div>
@@ -283,7 +285,7 @@ export function ExerciseSelectorModal({
                         e.stopPropagation()
                         handleAdd(exercise.id)
                       }}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border border-neutral-700 bg-neutral-800 hover:bg-white hover:text-black hover:border-white text-neutral-200 active:scale-90 transition shadow-sm"
+                      className="press min-w-12 min-h-12 rounded-md flex items-center justify-center shrink-0 border border-line-strong bg-elevated hover:bg-accent hover:text-accent-fg text-neutral-200"
                       title={`Añadir ${exercise.name}`}
                       aria-label={`Añadir ${exercise.name}`}
                     >
@@ -299,7 +301,7 @@ export function ExerciseSelectorModal({
                   <button
                     type="button"
                     onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                    className="w-full py-2.5 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
+                    className="btn-secondary w-full"
                   >
                     Mostrar más ({filteredExercises.length - visibleCount} restantes)
                   </button>
@@ -308,7 +310,7 @@ export function ExerciseSelectorModal({
             </>
           ) : (
             <div className="py-12 text-center text-neutral-400 space-y-3 px-4">
-              <Search size={32} className="mx-auto text-neutral-600" />
+              <Search size={32} className="mx-auto text-neutral-400" />
               <div>
                 <p className="text-sm font-semibold text-white">No se encontraron ejercicios</p>
                 <p className="text-xs text-neutral-400 mt-0.5">
@@ -318,7 +320,7 @@ export function ExerciseSelectorModal({
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-white hover:bg-neutral-200 text-black text-xs font-bold rounded-xl transition shadow-sm mt-1"
+                className="btn-primary inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold mt-1"
               >
                 <Plus size={15} strokeWidth={2.5} />
                 <span>
@@ -330,11 +332,11 @@ export function ExerciseSelectorModal({
         </div>
 
         {/* Barra inferior */}
-        <div className="p-3 border-t border-neutral-800 bg-neutral-900/80 flex items-center justify-between gap-3">
+        <div className="p-3 border-t border-line bg-surface flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs text-neutral-300 hover:text-white transition font-medium"
+            className="flex items-center gap-1.5 text-xs text-neutral-300 hover:text-white font-medium"
           >
             <Plus size={14} />
             <span>Crear ejercicio</span>
@@ -342,7 +344,7 @@ export function ExerciseSelectorModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition"
+            className="btn-secondary px-4 py-2 text-xs font-bold"
           >
             Cancelar
           </button>

@@ -1,21 +1,15 @@
-import { getLatestBodyweightKg } from '../utils/weightUnits'
-import { ExerciseFocusSelector } from '../components/ExerciseFocusSelector'
-import { getExerciseFocusDefinition, getExerciseFocusInstructions } from '../data/exerciseFocus'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Search, X, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { Search, X, ChevronRight, Plus, Star } from 'lucide-react'
 import { db } from '../db'
+import { ScreenHeader, HeaderIconButton } from '../components/ui/ScreenHeader'
+import { SegTabs } from '../components/ui/SegTabs'
 import { ExerciseDemo } from '../components/ExerciseDemo'
-import { BodyMuscleChart } from '../components/BodyMuscleChart'
 import { ExerciseFormModal } from '../components/ExerciseFormModal'
-import { ExerciseHistoryTab } from '../components/ExerciseHistoryTab'
-import { ExerciseNotesTab } from '../components/ExerciseNotesTab'
-import { MuscleToggleList } from '../components/MuscleToggleList'
-import { exerciseMedia } from '../data/exerciseMedia'
-import { getEffectiveMedia } from '../utils/effectiveMuscles'
-import type { Exercise, ExerciseType } from '../types'
-
-type DetailTab = 'resumen' | 'historial' | 'notas'
+import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
+import { formatNumber } from '../utils/format'
+import type { ExerciseType } from '../types'
 
 const PAGE_SIZE = 60
 
@@ -46,46 +40,34 @@ function normalize(text: string): string {
 function formatExerciseType(type: ExerciseType): string {
   switch (type) {
     case 'weight_reps':
-      return 'Carga y Repeticiones'
+      return 'Carga y reps'
     case 'bodyweight_reps':
-      return 'Peso Corporal'
+      return 'Peso corporal'
     case 'bodyweight_assisted':
       return 'Asistido'
     case 'duration':
-      return 'Por Tiempo'
+      return 'Por tiempo'
     case 'distance':
-      return 'Por Distancia'
+      return 'Por distancia'
     default:
       return type
   }
 }
 
 export function ExercisesPage() {
+  const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMuscle, setSelectedMuscle] = useState('Todos')
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentFilter>('Todos')
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null)
-  const [detailTab, setDetailTab] = useState<DetailTab>('resumen')
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
-  const [instructionsMap, setInstructionsMap] = useState<Record<string, string[]> | null>(null)
-
-  useEffect(() => {
-    if (selectedExercise && !instructionsMap) {
-      import('../data/exerciseInstructions.json').then((module) => {
-        setInstructionsMap(module.default as Record<string, string[]>)
-      })
-    }
-  }, [selectedExercise, instructionsMap])
 
   const exercises = useLiveQuery(() => db.exercises.toArray(), [])
-  const workouts = useLiveQuery(() => db.workouts.toArray(), [])
-  const measurements = useLiveQuery(() => db.measurements.toArray(), [])
-  const settings = useLiveQuery(() => db.settings.get('app'), [])
 
-  const unit = (settings && 'units' in settings && settings.units) || 'kg'
-
-  const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
+  const customCount = useMemo(() => {
+    return exercises ? exercises.filter((e) => e.isCustom).length : 0
+  }, [exercises])
 
   const filteredExercises = useMemo(() => {
     if (!exercises) return []
@@ -121,446 +103,249 @@ export function ExercisesPage() {
     setVisibleCount(PAGE_SIZE)
   }
 
-  const handleDeleteExercise = async () => {
-    if (!selectedExercise || !selectedExercise.isCustom) return
-    const confirmed = window.confirm(
-      `¿Estás seguro de que deseas eliminar "${selectedExercise.name}"? Esta acción no se puede deshacer.`
-    )
-    if (!confirmed) return
-
-    try {
-      await db.exercises.delete(selectedExercise.id)
-      setSelectedExercise(null)
-    } catch (err) {
-      console.error('Error al eliminar ejercicio:', err)
-      alert('Error al intentar eliminar el ejercicio.')
-    }
-  }
-
-  const selectedOverride = useLiveQuery(
-    () => (selectedExercise ? db.muscleOverrides.get(selectedExercise.id) : undefined),
-    [selectedExercise?.id]
-  )
-
-  const hasBaseMedia = Boolean(selectedExercise && exerciseMedia[selectedExercise.id])
-  const effectiveMedia = useMemo(() => {
-    if (!selectedExercise) return undefined
-    return getEffectiveMedia(selectedExercise.id, selectedOverride)
-  }, [selectedExercise, selectedOverride])
-  const instructions = selectedExercise
-    ? getExerciseFocusInstructions(selectedExercise.id, selectedOverride?.focus) ?? instructionsMap?.[selectedExercise.id]
-    : undefined
-
-
   return (
-    <div className="p-4 space-y-4">
-      <div className="border-b border-neutral-800 pb-3 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Ejercicios</h1>
-          <p className="text-sm text-neutral-400 mt-1">
-            Catálogo local de movimientos de fuerza y acondicionamiento.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setIsCreateModalOpen(true)}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-neutral-200 text-black text-xs font-bold rounded-xl transition shadow-sm"
-        >
-          <Plus size={16} strokeWidth={2.5} />
-          <span>Nuevo ejercicio</span>
-        </button>
-      </div>
-
-      {/* Buscador */}
-      <div className="relative">
-        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
-          <Search size={16} />
-        </span>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => handleSearchChange(e.target.value)}
-          placeholder="Buscar por nombre (ej. Press, Sentadilla)..."
-          className="w-full pl-9 pr-8 py-2.5 bg-neutral-900 border border-neutral-800 rounded-xl text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-white transition"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => handleSearchChange('')}
-            className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-white"
-            aria-label="Limpiar búsqueda"
-          >
-            <X size={14} />
-          </button>
-        )}
-      </div>
-
-      {/* Filtros de grupo muscular en scroll horizontal */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {MUSCLE_GROUPS.map((muscle) => {
-          const isSelected = selectedMuscle === muscle
-          return (
-            <button
-              key={muscle}
-              onClick={() => handleMuscleChange(muscle)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition border ${
-                isSelected
-                  ? 'bg-white text-black font-semibold border-white shadow-sm'
-                  : 'bg-neutral-900 text-neutral-400 hover:text-white border-neutral-800 hover:border-neutral-700'
-              }`}
-            >
-              {muscle}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Filtros de equipo */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        <span className="text-xs text-neutral-400 font-medium shrink-0 mr-1">Equipo:</span>
-        {EQUIPMENT_FILTERS.map((filter) => {
-          const isSelected = selectedEquipment === filter
-          return (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => handleEquipmentChange(filter)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition border ${
-                isSelected
-                  ? 'bg-white text-black font-semibold border-white shadow-sm'
-                  : 'bg-neutral-900 text-neutral-400 hover:text-white border-neutral-800 hover:border-neutral-700'
-              }`}
-            >
-              {filter}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Contador de resultados */}
-      <div className="flex items-center justify-between text-xs text-neutral-400 px-1">
-        <span>
-          {exercises ? (
-            <>
-              Mostrando <strong className="text-white">{displayedExercises.length}</strong> de {filteredExercises.length} ejercicios
-            </>
-          ) : (
-            'Cargando librería...'
-          )}
-        </span>
-        {(selectedMuscle !== 'Todos' || selectedEquipment !== 'Todos') && (
-          <span className="text-white font-medium">
-            Filtro:{' '}
-            {[
-              selectedMuscle !== 'Todos' ? selectedMuscle : null,
-              selectedEquipment !== 'Todos' ? selectedEquipment : null,
-            ]
-              .filter(Boolean)
-              .join(' • ')}
-          </span>
-        )}
-      </div>
-
-      {/* Lista de ejercicios con miniaturas paginada */}
-      {filteredExercises.length > 0 ? (
-        <div className="space-y-2">
-          {displayedExercises.map((exercise) => (
-            <div
-              key={exercise.id}
-              onClick={() => {
-                setSelectedExercise(exercise)
-                setDetailTab('resumen')
-              }}
-              className="bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-xl p-3.5 transition flex items-center justify-between gap-3 cursor-pointer group"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <ExerciseDemo exerciseId={exercise.id} variant="thumb" alt={exercise.name} />
-                <div className="space-y-1 min-w-0">
-                  <h3 className="font-semibold text-white text-sm leading-snug truncate group-hover:text-neutral-200">
-                    {exercise.name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="inline-flex items-center text-white font-medium">
-                      {exercise.muscleGroup}
-                    </span>
-                    <span className="text-neutral-600">•</span>
-                    <span className="text-neutral-400">{exercise.equipment}</span>
-                    <span className="text-neutral-600">•</span>
-                    <span className="text-neutral-500">
-                      {formatExerciseType(exercise.type)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <ChevronRight size={16} className="text-neutral-500 group-hover:text-neutral-300 shrink-0" />
-            </div>
-          ))}
-
-          {/* Botón Mostrar más */}
-          {filteredExercises.length > visibleCount && (
-            <div className="pt-2 pb-2 text-center">
-              <button
-                type="button"
-                onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                className="w-full py-3 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700 text-white text-xs font-semibold rounded-xl transition shadow-sm"
-              >
-                Mostrar más ({filteredExercises.length - visibleCount} restantes)
-              </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center space-y-2">
-          <Search size={32} className="mx-auto text-neutral-600" />
-          <h3 className="text-base font-semibold text-white">No se encontraron ejercicios</h3>
-          <p className="text-xs text-neutral-400">
-            Intenta con otro término de búsqueda o limpia el filtro de músculo seleccionado.
-          </p>
-          {(searchQuery || selectedMuscle !== 'Todos') && (
-            <button
-              onClick={() => {
-                handleSearchChange('')
-                handleMuscleChange('Todos')
-              }}
-              className="mt-2 text-xs text-white hover:underline font-medium"
-            >
-              Restablecer filtros
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* MODAL DE DETALLE DEL EJERCICIO CON PESTAÑAS (RESUMEN, HISTORIAL, NOTAS) */}
-      {selectedExercise && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            {/* Cabecera modal */}
-            <div className="flex items-start justify-between gap-2 border-b border-neutral-800 pb-3">
-              <div>
-                <h3 className="font-bold text-white text-base leading-snug">
-                  {selectedExercise.name}
-                </h3>
-                <span className="text-xs text-neutral-400 mt-0.5 block">
-                  {selectedExercise.muscleGroup} • {selectedExercise.equipment}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedExercise(null)}
-                className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition shrink-0"
-                aria-label="Cerrar detalle"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Pestañas: Resumen | Historial | Notas */}
-            <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800">
-              <button
-                type="button"
-                onClick={() => setDetailTab('resumen')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
-                  detailTab === 'resumen'
-                    ? 'bg-neutral-800 text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                Resumen
-              </button>
-              <button
-                type="button"
-                onClick={() => setDetailTab('historial')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
-                  detailTab === 'historial'
-                    ? 'bg-neutral-800 text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                Historial
-              </button>
-              <button
-                type="button"
-                onClick={() => setDetailTab('notas')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition ${
-                  detailTab === 'notas'
-                    ? 'bg-neutral-800 text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                Notas
-              </button>
-            </div>
-
-            {/* Pestaña: Resumen */}
-            {detailTab === 'resumen' && (
-              <div className="space-y-4">
-                <ExerciseFocusSelector exerciseId={selectedExercise.id} />
-                {/* Demostración grande animada */}
-                <div className="flex justify-center">
-                  <ExerciseDemo
-                    exerciseId={selectedExercise.id}
-                    gifUrl={effectiveMedia?.gifUrl}
-                    variant="full"
-                    alt={selectedExercise.name}
-                  />
-                </div>
-
-                {/* Mapa muscular anatómico */}
-                {hasBaseMedia && effectiveMedia ? (
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 space-y-3">
-                    <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                        Mapa Muscular
-                      </span>
-                      <div className="flex items-center gap-3 text-[10px]">
-                        {effectiveMedia.primary.length > 0 && (
-                          <span className="flex items-center gap-1.5 text-neutral-300">
-                            <span className="w-2 h-2 rounded-full bg-[#dc2626] inline-block" />
-                            Primario
-                          </span>
-                        )}
-                        {effectiveMedia.secondary.length > 0 && (
-                          <span className="flex items-center gap-1.5 text-neutral-400">
-                            <span className="w-2 h-2 rounded-full bg-[#f97316] inline-block" />
-                            Secundario
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <BodyMuscleChart
-                      primary={effectiveMedia.primary}
-                      secondary={effectiveMedia.secondary}
-                      size="lg"
-                    />
-
-                    <div className="space-y-1 pt-1 text-xs border-t border-neutral-800/60">
-                      {effectiveMedia.primaryEs.length > 0 ? (
-                        <div className="leading-snug">
-                          <span className="font-semibold text-white">Músculos: </span>
-                          <span className="text-neutral-200">
-                            {effectiveMedia.primaryEs.join(', ')}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="leading-snug text-neutral-500">
-                          Sin músculos primarios activos
-                        </div>
-                      )}
-                      {effectiveMedia.secondaryEs.length > 0 && (
-                        <div className="leading-snug text-neutral-400">
-                          <span className="font-medium text-neutral-400">Secundarios: </span>
-                          <span className="text-neutral-400">
-                            {effectiveMedia.secondaryEs.join(', ')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 text-center">
-                    <span className="text-xs text-neutral-500">Sin datos de músculos</span>
-                  </div>
-                )}
-
-                {/* Ajuste interactivo de músculos trabajados */}
-                {!getExerciseFocusDefinition(selectedExercise.id) && <MuscleToggleList exerciseId={selectedExercise.id} />}
-
-                {/* Instrucciones de técnica */}
-                {instructions && instructions.length > 0 && (
-                  <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 space-y-2">
-                    <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
-                      Cómo se hace
-                    </span>
-                    <ol className="space-y-1.5 text-xs text-neutral-300 list-decimal list-inside leading-relaxed">
-                      {instructions.map((step, idx) => (
-                        <li key={idx} className="text-neutral-300">
-                          <span className="text-neutral-200">{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </div>
-                )}
-
-                {/* Metadatos del ejercicio */}
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800">
-                    <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">
-                      Grupo Muscular
-                    </span>
-                    <span className="font-semibold text-white">{selectedExercise.muscleGroup}</span>
-                  </div>
-
-                  <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800">
-                    <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">
-                      Equipamiento
-                    </span>
-                    <span className="font-semibold text-white">{selectedExercise.equipment}</span>
-                  </div>
-
-                  <div className="col-span-2 bg-neutral-950 p-2.5 rounded-xl border border-neutral-800 flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">
-                        Tipo de Métrica
-                      </span>
-                      <span className="font-semibold text-white">
-                        {formatExerciseType(selectedExercise.type)}
-                      </span>
-                    </div>
-                    {selectedExercise.isCustom && (
-                      <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700">
-                        Personalizado
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Pestaña: Historial */}
-            {detailTab === 'historial' && (
-              <ExerciseHistoryTab
-                exercise={selectedExercise}
-                workouts={workouts}
-                bodyweightKg={latestBodyweight}
-                unit={unit}
-              />
-            )}
-
-            {/* Pestaña: Notas */}
-            {detailTab === 'notas' && (
-              <ExerciseNotesTab exerciseId={selectedExercise.id} />
-            )}
-
-            {/* Botones de acción */}
-            <div className="space-y-2 pt-2 border-t border-neutral-800">
-              {selectedExercise.isCustom && (
-                <button
-                  type="button"
-                  onClick={handleDeleteExercise}
-                  className="w-full py-2.5 bg-red-950/40 hover:bg-red-900/60 text-red-400 border border-red-900/50 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2"
-                >
-                  <Trash2 size={15} />
-                  <span>Eliminar ejercicio</span>
-                </button>
+    <div className="flex flex-col min-h-full bg-black">
+      {/* Cabecera ScreenHeader */}
+      <ScreenHeader
+        title="Ejercicios"
+        subtitle={
+          exercises ? (
+            <span>
+              <span className="num">{formatNumber(exercises.length)}</span> ejercicios
+              {customCount > 0 ? (
+                <>
+                  {' '}· <span className="num">{customCount}</span> personalizados
+                </>
+              ) : (
+                ''
               )}
+            </span>
+          ) : undefined
+        }
+        actions={
+          <HeaderIconButton
+            label="Nuevo ejercicio"
+            onClick={() => setIsCreateModalOpen(true)}
+          >
+            <Plus size={22} strokeWidth={1.75} />
+          </HeaderIconButton>
+        }
+      />
 
-              <button
-                type="button"
-                onClick={() => setSelectedExercise(null)}
-                className="w-full py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
-              >
-                Cerrar
-              </button>
-            </div>
+      {/* Pestañas de navegación con SegTabs: Rutinas | Ejercicios */}
+      <SegTabs
+        value="exercises"
+        options={[
+          { value: 'routines', label: 'Rutinas' },
+          { value: 'exercises', label: 'Ejercicios' },
+        ]}
+        onChange={(val) => {
+          if (val === 'routines') {
+            navigate('/routines')
+          }
+        }}
+        label="Secciones de entrenamiento"
+      />
+
+      <div className="flex-1 p-4 space-y-4">
+        {/* Campo de búsqueda con altura táctil cómoda */}
+        <div className="relative flex items-center">
+          <Search
+            size={18}
+            strokeWidth={1.75}
+            className="absolute left-3.5 text-neutral-400 pointer-events-none"
+          />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Buscar por nombre (ej. Press, Sentadilla)..."
+            aria-label="Buscar ejercicio"
+            className="field pl-10 pr-12 text-sm"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => handleSearchChange('')}
+              className="press absolute right-1 min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-white"
+              aria-label="Limpiar búsqueda"
+            >
+              <X size={16} strokeWidth={2} />
+            </button>
+          )}
+        </div>
+
+        {/* Filtros de grupo muscular con chips de al menos 48 px de área táctil */}
+        <div className="space-y-2">
+          <div
+            className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none"
+            role="group"
+            aria-label="Filtro de grupo muscular"
+          >
+            {MUSCLE_GROUPS.map((muscle) => {
+              const isSelected = selectedMuscle === muscle
+              return (
+                <button
+                  key={muscle}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => handleMuscleChange(muscle)}
+                  className={`press min-h-12 px-4 rounded-md text-xs font-semibold whitespace-nowrap border shrink-0 flex items-center ${
+                    isSelected
+                      ? 'bg-accent border-accent text-on-accent'
+                      : 'bg-surface border-line text-neutral-300 hover:text-white hover:border-line-strong'
+                  }`}
+                >
+                  {muscle}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Filtros de equipamiento con chips de al menos 48 px de área táctil */}
+          <div
+            className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none"
+            role="group"
+            aria-label="Filtro de equipamiento"
+          >
+            {EQUIPMENT_FILTERS.map((filter) => {
+              const isSelected = selectedEquipment === filter
+              return (
+                <button
+                  key={filter}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => handleEquipmentChange(filter)}
+                  className={`press min-h-12 px-4 rounded-md text-xs font-semibold whitespace-nowrap border shrink-0 flex items-center ${
+                    isSelected
+                      ? 'bg-accent border-accent text-on-accent'
+                      : 'bg-surface border-line text-neutral-300 hover:text-white hover:border-line-strong'
+                  }`}
+                >
+                  {filter}
+                </button>
+              )
+            })}
           </div>
         </div>
+
+        {/* Contador de resultados */}
+        <div className="flex items-center justify-between text-xs text-neutral-400 pt-1 border-t border-line">
+          <span>
+            {exercises ? (
+              <>
+                Mostrando <strong className="num text-white">{displayedExercises.length}</strong> de{' '}
+                <strong className="num text-white">{filteredExercises.length}</strong> ejercicios
+              </>
+            ) : (
+              'Cargando catálogo...'
+            )}
+          </span>
+          {(selectedMuscle !== 'Todos' || selectedEquipment !== 'Todos') && (
+            <span className="label-tech text-neutral-300">
+              {[
+                selectedMuscle !== 'Todos' ? selectedMuscle : null,
+                selectedEquipment !== 'Todos' ? selectedEquipment : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          )}
+        </div>
+
+        {/* Lista densa de ejercicios */}
+        {filteredExercises.length > 0 ? (
+          <div className="border border-line rounded-md overflow-hidden bg-surface divide-y divide-line">
+            {displayedExercises.map((exercise) => (
+              <div
+                key={exercise.id}
+                onClick={() => setSelectedExerciseId(exercise.id)}
+                className="press flex items-center justify-between gap-3 p-3 min-h-14 cursor-pointer hover:bg-surface-elevated select-none"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <ExerciseDemo exerciseId={exercise.id} variant="thumb" alt={exercise.name} />
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-semibold text-white text-[15px] leading-tight truncate">
+                      {exercise.name}
+                    </h3>
+                    <div className="label-tech text-neutral-400 mt-1 truncate flex items-center gap-1.5">
+                      <span className="text-neutral-200">{exercise.muscleGroup}</span>
+                      <span>·</span>
+                      <span>{exercise.equipment}</span>
+                      <span>·</span>
+                      <span>{formatExerciseType(exercise.type)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {exercise.isCustom && (
+                    <span
+                      title="Ejercicio personalizado"
+                      aria-label="Ejercicio personalizado"
+                      className="label-tech inline-flex items-center gap-1 text-accent border border-line-strong px-1.5 py-0.5 rounded-sm"
+                    >
+                      <Star size={11} fill="currentColor" strokeWidth={0} />
+                      <span className="hidden sm:inline">Propio</span>
+                    </span>
+                  )}
+                  <ChevronRight size={18} strokeWidth={1.75} className="text-neutral-400 shrink-0" />
+                </div>
+              </div>
+            ))}
+
+            {/* Carga por tramos: Botón Mostrar más */}
+            {filteredExercises.length > visibleCount && (
+              <div className="p-3 bg-surface">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
+                  className="btn-secondary w-full"
+                >
+                  Mostrar más (<span className="num">{filteredExercises.length - visibleCount}</span> restantes)
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="panel p-8 text-center space-y-3">
+            <Search size={32} strokeWidth={1.5} className="mx-auto text-neutral-400" />
+            <h3 className="section-title">No se encontraron ejercicios</h3>
+            <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+              Intenta con otro término de búsqueda o limpia los filtros seleccionados.
+            </p>
+            {(searchQuery || selectedMuscle !== 'Todos' || selectedEquipment !== 'Todos') && (
+              <button
+                type="button"
+                onClick={() => {
+                  handleSearchChange('')
+                  handleMuscleChange('Todos')
+                  handleEquipmentChange('Todos')
+                }}
+                className="btn-secondary mt-2"
+              >
+                Restablecer filtros
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Modal de detalle y vista previa completa del ejercicio */}
+      {selectedExerciseId && (
+        <ExercisePreviewModal
+          exerciseId={selectedExerciseId}
+          onClose={() => setSelectedExerciseId(null)}
+        />
       )}
 
       {/* Modal de creación de ejercicio propio */}
       <ExerciseFormModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onCreated={(newId) => {
+          setSelectedExerciseId(newId)
+        }}
       />
     </div>
   )

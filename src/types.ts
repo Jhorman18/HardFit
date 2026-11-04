@@ -112,6 +112,8 @@ export interface Settings {
   legacyWeightUnit?: WeightUnit
   restSeconds?: number
   showRpe?: boolean
+  /** Barra de referencia para el desglose de discos; 20 kg si no se ha elegido. */
+  barKg?: number
   createdAt: number
   seedVersion?: number
   sex?: 'male' | 'female'

@@ -138,7 +138,8 @@ export function SearchableSelect({
       {/* Input container */}
       <div className="relative flex items-center">
         <Search
-          size={14}
+          size={16}
+          strokeWidth={1.75}
           className="absolute left-3 text-neutral-400 pointer-events-none"
         />
         <input
@@ -162,26 +163,28 @@ export function SearchableSelect({
           }}
           onKeyDown={handleKeyDown}
           placeholder={selectedOption ? selectedOption.label : placeholder}
-          className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-8 pr-16 py-2.5 text-xs font-semibold text-white placeholder-neutral-500 focus:outline-none focus:border-white transition"
+          className="field pl-9 pr-14 text-sm font-medium"
         />
 
-        <div className="absolute right-2.5 flex items-center gap-1">
+        <div className="absolute right-1 flex items-center">
           {isOpen && searchQuery && (
             <button
               type="button"
+              aria-label="Limpiar selección"
               onClick={() => {
                 setSearchQuery('')
                 inputRef.current?.focus()
               }}
-              className="text-neutral-400 hover:text-white p-0.5 rounded transition"
+              className="press w-8 h-8 flex items-center justify-center text-neutral-400 active:text-white"
             >
-              <X size={13} />
+              <X size={15} />
             </button>
           )}
           <button
             type="button"
             tabIndex={-1}
             disabled={disabled}
+            aria-label="Desplegar opciones"
             onClick={() => {
               if (!disabled) {
                 setIsOpen((prev) => !prev)
@@ -192,11 +195,11 @@ export function SearchableSelect({
                 }
               }
             }}
-            className="text-neutral-400 hover:text-white p-0.5 transition"
+            className="press w-8 h-8 flex items-center justify-center text-neutral-400 active:text-white"
           >
             <ChevronDown
-              size={14}
-              className={`transition-transform duration-200 ${isOpen ? 'rotate-180 text-white' : ''}`}
+              size={16}
+              className={`transition-transform duration-150 ${isOpen ? 'rotate-180 text-white' : ''}`}
             />
           </button>
         </div>
@@ -204,7 +207,7 @@ export function SearchableSelect({
 
       {/* Dropdown list */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-neutral-800 bg-neutral-900 shadow-2xl overflow-hidden">
+        <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-md border border-line-strong bg-surface overflow-hidden">
           {filteredOptions.length === 0 ? (
             <div className="p-3 text-center text-xs text-neutral-400">
               {emptyMessage}
@@ -213,7 +216,7 @@ export function SearchableSelect({
             <ul
               ref={listRef}
               role="listbox"
-              className="max-h-60 overflow-y-auto py-1 divide-y divide-neutral-800/40"
+              className="max-h-60 overflow-y-auto py-1 divide-y divide-line"
             >
               {filteredOptions.map((opt, index) => {
                 const isSelected = opt.value === value
@@ -226,26 +229,26 @@ export function SearchableSelect({
                     aria-selected={isSelected}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     onClick={() => handleSelect(opt.value)}
-                    className={`px-3 py-2 text-xs transition flex items-center justify-between cursor-pointer ${
+                    className={`min-h-12 px-3 py-2 text-sm flex items-center justify-between cursor-pointer ${
                       isHighlighted
-                        ? 'bg-neutral-800 text-white'
+                        ? 'bg-surface-elevated text-white'
                         : isSelected
-                          ? 'bg-neutral-800/50 text-white'
-                          : 'text-neutral-200 hover:bg-neutral-800 hover:text-white'
+                          ? 'bg-surface-elevated text-accent font-semibold'
+                          : 'text-neutral-300 hover:bg-surface-elevated hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate pr-2">
-                      <span className={`truncate ${isSelected ? 'font-bold text-white' : 'font-medium'}`}>
+                      <span className="truncate">
                         {opt.label}
                       </span>
                       {opt.subtitle && (
-                        <span className="text-[10px] text-neutral-400 bg-neutral-950 border border-neutral-800 px-1.5 py-0.5 rounded shrink-0">
+                        <span className="label-tech bg-surface-elevated border border-line px-1.5 py-0.5 rounded-sm shrink-0">
                           {opt.subtitle}
                         </span>
                       )}
                     </div>
                     {isSelected && (
-                      <Check size={13} className="text-white shrink-0 ml-1" />
+                      <Check size={16} strokeWidth={2} className="text-accent shrink-0 ml-1" />
                     )}
                   </li>
                 )

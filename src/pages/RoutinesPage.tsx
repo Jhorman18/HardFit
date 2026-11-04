@@ -2,20 +2,22 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
-  Folder as FolderIcon,
   FolderPlus,
   Plus,
-  ClipboardList,
-  ChevronUp,
+  Play,
   ChevronDown,
+  ChevronUp,
   Pencil,
   Trash2,
-  Play,
-  FileText,
+  Copy,
   AlertTriangle,
+  MoreVertical,
 } from 'lucide-react'
 import { db } from '../db'
 import { useWorkoutStore } from '../store'
+import { ScreenHeader, HeaderIconButton } from '../components/ui/ScreenHeader'
+import { SegTabs } from '../components/ui/SegTabs'
+import { Sheet } from '../components/ui/Sheet'
 import type { Routine, Folder, Exercise } from '../types'
 
 function generateFolderId(): string {
@@ -23,6 +25,13 @@ function generateFolderId(): string {
     return crypto.randomUUID()
   }
   return `fld-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+}
+
+function generateRoutineId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `rt-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
 }
 
 export function RoutinesPage() {
@@ -33,18 +42,38 @@ export function RoutinesPage() {
   const routines = useLiveQuery(() => db.routines.orderBy('order').toArray(), [])
   const exercises = useLiveQuery(() => db.exercises.toArray(), [])
 
-  // Modales de carpetas
+  // Modales
   const [isNewFolderOpen, setIsNewFolderOpen] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [folderToRename, setFolderToRename] = useState<Folder | null>(null)
   const [renameFolderName, setRenameFolderName] = useState('')
   const [folderToDelete, setFolderToDelete] = useState<Folder | null>(null)
+  const [folderActionTarget, setFolderActionTarget] = useState<Folder | null>(null)
 
-  // Modales de rutinas
   const [routineToDelete, setRoutineToDelete] = useState<Routine | null>(null)
+  const [routineActionTarget, setRoutineActionTarget] = useState<{
+    routine: Routine
+    list: Routine[]
+    index: number
+  } | null>(null)
   const [pendingRoutineToStart, setPendingRoutineToStart] = useState<Routine | null>(null)
 
-  // Mapa rápido de ejercicios
+  // Estado de carpetas plegadas: Set de folderId colapsadas (las carpetas están abiertas por defecto)
+  const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(new Set())
+
+  const toggleFolder = (folderId: string) => {
+    setCollapsedFolderIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) {
+        next.delete(folderId)
+      } else {
+        next.add(folderId)
+      }
+      return next
+    })
+  }
+
+  // Mapa de ejercicios
   const exerciseMap = useMemo(() => {
     const map = new Map<string, Exercise>()
     if (exercises) {
@@ -83,7 +112,8 @@ export function RoutinesPage() {
   }, [folders, routines])
 
   // Acciones de Carpeta
-  const handleCreateFolder = async () => {
+  const handleCreateFolder = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     const trimmed = newFolderName.trim()
     if (!trimmed) return
 
@@ -98,7 +128,8 @@ export function RoutinesPage() {
     setIsNewFolderOpen(false)
   }
 
-  const handleRenameFolder = async () => {
+  const handleRenameFolder = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     if (!folderToRename) return
     const trimmed = renameFolderName.trim()
     if (!trimmed) return
@@ -144,6 +175,17 @@ export function RoutinesPage() {
     setRoutineToDelete(null)
   }
 
+  const handleDuplicateRoutine = async (routine: Routine) => {
+    const newRoutine: Routine = {
+      ...routine,
+      id: generateRoutineId(),
+      name: `${routine.name} (copia)`,
+      order: Date.now(),
+    }
+    await db.routines.add(newRoutine)
+    setRoutineActionTarget(null)
+  }
+
   const handleMoveRoutine = async (list: Routine[], index: number, direction: 'up' | 'down') => {
     const targetIndex = direction === 'up' ? index - 1 : index + 1
     if (targetIndex < 0 || targetIndex >= list.length) return
@@ -183,542 +225,628 @@ export function RoutinesPage() {
     }
 
     const count = routine.items.length
-    const labelCount = count === 1 ? '1 ejercicio' : `${count} ejercicios`
-
     const names = routine.items
       .slice(0, 3)
       .map((item) => exerciseMap.get(item.exerciseId)?.name || 'Ejercicio')
-      .join(', ')
+      .join(' · ')
 
-    return count > 3 ? `${labelCount}: ${names}…` : `${labelCount}: ${names}`
+    return count > 3 ? `${names}…` : names
+  }
+
+  const getRoutineMeta = (routine: Routine): string => {
+    const itemsCount = routine.items ? routine.items.length : 0
+    const setsCount = routine.items
+      ? routine.items.reduce((acc, item) => acc + (item.targetSets?.length || 0), 0)
+      : 0
+    return `${itemsCount} ${itemsCount === 1 ? 'ejercicio' : 'ejercicios'} · ${setsCount} ${setsCount === 1 ? 'serie' : 'series'}`
   }
 
   const totalRoutines = routines ? routines.length : 0
   const totalFolders = folders ? folders.length : 0
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Encabezado y botones de creación */}
-      <div className="border-b border-neutral-800 pb-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Rutinas</h1>
-            <p className="text-xs text-neutral-400 mt-1">
-              Plantillas de entreno organizadas por carpetas y grupos.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
+    <div className="flex flex-col min-h-full bg-black">
+      {/* Cabecera propia de la pantalla con ScreenHeader */}
+      <ScreenHeader
+        title="Rutinas"
+        actions={
+          <>
+            <HeaderIconButton
+              label="Nueva carpeta"
               onClick={() => {
                 setNewFolderName('')
                 setIsNewFolderOpen(true)
               }}
-              className="py-2 px-3 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
-              title="Crear nueva carpeta"
             >
-              <FolderPlus size={15} />
-              <span className="hidden sm:inline">Nueva carpeta</span>
-            </button>
-
-            <button
-              type="button"
+              <FolderPlus size={20} strokeWidth={1.75} />
+            </HeaderIconButton>
+            <HeaderIconButton
+              label="Nueva rutina"
               onClick={() => navigate('/routines/new')}
-              className="py-2 px-3.5 bg-white hover:bg-neutral-200 text-black rounded-xl text-xs font-bold transition shadow-md flex items-center gap-1.5"
             >
-              <Plus size={16} />
-              <span>Nueva rutina</span>
-            </button>
-          </div>
-        </div>
-      </div>
+              <Plus size={22} strokeWidth={1.75} />
+            </HeaderIconButton>
+          </>
+        }
+      />
 
-      {/* Si no hay ni rutinas ni carpetas */}
-      {totalRoutines === 0 && totalFolders === 0 ? (
-        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-neutral-950 border border-neutral-800 text-white flex items-center justify-center mx-auto shadow-inner">
-            <ClipboardList size={32} className="text-neutral-400" />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white">Sin rutinas creadas</h2>
-            <p className="text-xs text-neutral-400 max-w-sm mx-auto mt-1 leading-relaxed">
+      {/* Pestañas de navegación Rutinas / Ejercicios */}
+      <SegTabs
+        value="routines"
+        options={[
+          { value: 'routines', label: 'Rutinas' },
+          { value: 'exercises', label: 'Ejercicios' },
+        ]}
+        onChange={(val) => {
+          if (val === 'exercises') {
+            navigate('/exercises')
+          }
+        }}
+        label="Secciones de entrenamiento"
+      />
+
+      {/* Contenido principal */}
+      <div className="flex-1 p-4 space-y-4">
+        {totalRoutines === 0 && totalFolders === 0 ? (
+          <div className="panel p-8 text-center space-y-4 my-4">
+            <h2 className="section-title">Sin rutinas creadas</h2>
+            <p className="text-sm text-neutral-400 max-w-sm mx-auto leading-relaxed">
               Crea plantillas para tus sesiones habituales (por ejemplo: Empuje/Tirón/Pierna o Torso/Pierna)
-              y organízalas cómodamente en carpetas.
+              y organízalas en carpetas.
             </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setNewFolderName('')
+                  setIsNewFolderOpen(true)
+                }}
+                className="btn-secondary"
+              >
+                <FolderPlus size={18} strokeWidth={1.75} />
+                <span>Nueva carpeta</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/routines/new')}
+                className="btn-primary"
+              >
+                <Plus size={18} strokeWidth={2} />
+                <span>Crear primera rutina</span>
+              </button>
+            </div>
           </div>
-          <div className="flex justify-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setNewFolderName('')
-                setIsNewFolderOpen(true)
-              }}
-              className="py-2 px-3 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs font-semibold transition flex items-center gap-1.5"
-            >
-              <FolderPlus size={15} />
-              <span>Crear carpeta</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/routines/new')}
-              className="py-2 px-4 bg-white hover:bg-neutral-200 text-black rounded-xl text-xs font-bold transition shadow-md flex items-center gap-1.5"
-            >
-              <Plus size={16} />
-              <span>Crear primera rutina</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Listado de Carpetas */}
-          {folders &&
-            folders.map((folder, folderIdx) => {
-              const folderRoutines = routinesByFolderId.get(folder.id) || []
+        ) : (
+          <div className="space-y-4">
+            {/* Listado de Carpetas */}
+            {folders &&
+              folders.map((folder) => {
+                const folderRoutines = routinesByFolderId.get(folder.id) || []
+                const isCollapsed = collapsedFolderIds.has(folder.id)
 
-              return (
-                <div
-                  key={folder.id}
-                  className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm"
-                >
-                  {/* Encabezado de la Carpeta */}
-                  <div className="p-3.5 bg-neutral-900/90 border-b border-neutral-800 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <FolderIcon size={18} className="text-white" />
-                      <h2 className="font-bold text-white text-sm">{folder.name}</h2>
-                      <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full border border-neutral-700">
-                        {folderRoutines.length}
-                      </span>
+                return (
+                  <div key={folder.id} className="border border-line rounded-md overflow-hidden bg-surface">
+                    {/* Encabezado de la Carpeta (Plegable) */}
+                    <div className="flex items-center justify-between border-b border-line bg-surface-elevated">
+                      <button
+                        type="button"
+                        onClick={() => toggleFolder(folder.id)}
+                        aria-expanded={!isCollapsed}
+                        className="press flex-1 min-h-12 flex items-center gap-2 px-3 text-left"
+                      >
+                        <ChevronDown
+                          size={18}
+                          className={`text-neutral-400 transition-transform duration-150 shrink-0 ${
+                            isCollapsed ? '-rotate-90' : 'rotate-0'
+                          }`}
+                        />
+                        <span className="label-tech text-neutral-200 truncate flex-1">
+                          {folder.name}
+                        </span>
+                        <span className="num text-xs text-neutral-400 bg-surface px-2 py-0.5 rounded-sm border border-line shrink-0">
+                          {folderRoutines.length}
+                        </span>
+                      </button>
+
+                      {/* Botón de opciones de la carpeta */}
+                      <button
+                        type="button"
+                        aria-label={`Opciones de carpeta ${folder.name}`}
+                        onClick={() => setFolderActionTarget(folder)}
+                        className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-white shrink-0 border-l border-line"
+                      >
+                        <MoreVertical size={18} strokeWidth={1.75} />
+                      </button>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        disabled={folderIdx === 0}
-                        onClick={() => handleMoveFolder(folderIdx, 'up')}
-                        className={`w-6 h-6 rounded flex items-center justify-center transition ${
-                          folderIdx === 0
-                            ? 'text-neutral-700 bg-neutral-950/40 cursor-not-allowed'
-                            : 'text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-white'
-                        }`}
-                        title="Subir carpeta"
-                        aria-label="Subir carpeta"
-                      >
-                        <ChevronUp size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={folderIdx === (folders.length - 1)}
-                        onClick={() => handleMoveFolder(folderIdx, 'down')}
-                        className={`w-6 h-6 rounded flex items-center justify-center transition ${
-                          folderIdx === (folders.length - 1)
-                            ? 'text-neutral-700 bg-neutral-950/40 cursor-not-allowed'
-                            : 'text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-white'
-                        }`}
-                        title="Bajar carpeta"
-                        aria-label="Bajar carpeta"
-                      >
-                        <ChevronDown size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFolderToRename(folder)
-                          setRenameFolderName(folder.name)
-                        }}
-                        className="w-6 h-6 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 flex items-center justify-center transition"
-                        title="Renombrar carpeta"
-                        aria-label="Renombrar carpeta"
-                      >
-                        <Pencil size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFolderToDelete(folder)}
-                        className="w-6 h-6 rounded text-neutral-500 hover:text-red-400 hover:bg-neutral-800 flex items-center justify-center transition"
-                        title="Eliminar carpeta"
-                        aria-label="Eliminar carpeta"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
+                    {/* Rutinas dentro de la Carpeta (si no está colapsada) */}
+                    {!isCollapsed && (
+                      <div>
+                        {folderRoutines.length > 0 ? (
+                          <ul className="divide-y divide-line">
+                            {folderRoutines.map((routine, rIdx) => (
+                              <li key={routine.id} className="flex items-stretch bg-surface hover:bg-surface-elevated">
+                                {/* Botón principal que abre el editor de la rutina */}
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(`/routines/${routine.id}/edit`)}
+                                  className="press flex-1 min-w-0 p-3 text-left"
+                                >
+                                  <span className="block text-[16px] font-semibold text-white truncate">
+                                    {routine.name}
+                                  </span>
+                                  <span className="block text-xs font-medium text-neutral-300 mt-0.5">
+                                    <span className="num">{getRoutineMeta(routine)}</span>
+                                  </span>
+                                  <span className="block text-xs text-neutral-400 truncate mt-1">
+                                    {getExerciseSummary(routine)}
+                                  </span>
+                                </button>
 
-                  {/* Rutinas dentro de la Carpeta */}
-                  <div className="p-3 space-y-2.5">
-                    {folderRoutines.length > 0 ? (
-                      folderRoutines.map((routine, rIdx) => (
-                        <div
-                          key={routine.id}
-                          className="bg-neutral-950 border border-neutral-800 rounded-xl p-3.5 space-y-2.5 hover:border-neutral-700 transition"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h3 className="font-bold text-white text-sm">{routine.name}</h3>
-                              <p className="text-xs text-neutral-400 mt-0.5">
-                                {getExerciseSummary(routine)}
-                              </p>
-                            </div>
+                                {/* Opciones de rutina */}
+                                <button
+                                  type="button"
+                                  aria-label={`Opciones de rutina ${routine.name}`}
+                                  onClick={() =>
+                                    setRoutineActionTarget({
+                                      routine,
+                                      list: folderRoutines,
+                                      index: rIdx,
+                                    })
+                                  }
+                                  className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-white shrink-0 border-l border-line"
+                                >
+                                  <MoreVertical size={18} strokeWidth={1.75} />
+                                </button>
 
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                disabled={rIdx === 0}
-                                onClick={() => handleMoveRoutine(folderRoutines, rIdx, 'up')}
-                                className={`w-6 h-6 rounded flex items-center justify-center transition ${
-                                  rIdx === 0
-                                    ? 'text-neutral-700 bg-neutral-900/40 cursor-not-allowed'
-                                    : 'text-neutral-400 bg-neutral-900 hover:bg-neutral-800 hover:text-white'
-                                }`}
-                                title="Subir rutina"
-                                aria-label="Subir rutina"
-                              >
-                                <ChevronUp size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={rIdx === folderRoutines.length - 1}
-                                onClick={() => handleMoveRoutine(folderRoutines, rIdx, 'down')}
-                                className={`w-6 h-6 rounded flex items-center justify-center transition ${
-                                  rIdx === folderRoutines.length - 1
-                                    ? 'text-neutral-700 bg-neutral-900/40 cursor-not-allowed'
-                                    : 'text-neutral-400 bg-neutral-900 hover:bg-neutral-800 hover:text-white'
-                                }`}
-                                title="Bajar rutina"
-                                aria-label="Bajar rutina"
-                              >
-                                <ChevronDown size={14} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => navigate(`/routines/${routine.id}/edit`)}
-                                className="w-6 h-6 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 flex items-center justify-center transition"
-                                title="Editar rutina"
-                                aria-label="Editar rutina"
-                              >
-                                <Pencil size={13} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setRoutineToDelete(routine)}
-                                className="w-6 h-6 rounded text-neutral-500 hover:text-red-400 hover:bg-neutral-800 flex items-center justify-center transition"
-                                title="Eliminar rutina"
-                                aria-label="Eliminar rutina"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Botón Empezar */}
-                          <div className="flex items-center gap-2 pt-1 border-t border-neutral-900">
+                                {/* Botón de arranque directo de 48 × 48 px */}
+                                <button
+                                  type="button"
+                                  aria-label={`Empezar ${routine.name}`}
+                                  onClick={() => handleStartRoutine(routine)}
+                                  className="press min-w-12 min-h-12 flex items-center justify-center text-accent active:scale-95 border-l border-line shrink-0"
+                                >
+                                  <Play size={20} fill="currentColor" strokeWidth={0} />
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div className="p-4 text-center text-xs text-neutral-400 space-y-2">
+                            <p>No hay rutinas en esta carpeta.</p>
                             <button
                               type="button"
-                              onClick={() => handleStartRoutine(routine)}
-                              className="w-full py-2 px-3 bg-white hover:bg-neutral-200 text-black rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
+                              onClick={() => navigate(`/routines/new?folderId=${folder.id}`)}
+                              className="text-xs text-white hover:underline font-semibold"
                             >
-                              <Play size={13} fill="currentColor" />
-                              <span>Empezar entreno</span>
+                              + Añadir rutina a {folder.name}
                             </button>
                           </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="py-4 text-center text-xs text-neutral-500 space-y-2">
-                        <p>No hay rutinas en esta carpeta.</p>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/routines/new?folderId=${folder.id}`)}
-                          className="text-xs text-white hover:underline font-medium"
-                        >
-                          + Añadir rutina a {folder.name}
-                        </button>
+                        )}
                       </div>
                     )}
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
 
-          {/* Sección Sin Carpeta */}
-          {unassignedRoutines.length > 0 && (
-            <div className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm">
-              <div className="p-3.5 bg-neutral-900/90 border-b border-neutral-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText size={18} className="text-white" />
-                  <h2 className="font-bold text-white text-sm">Sin carpeta</h2>
-                  <span className="text-[10px] bg-neutral-800 text-neutral-400 px-2 py-0.5 rounded-full border border-neutral-700">
-                    {unassignedRoutines.length}
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-3 space-y-2.5">
-                {unassignedRoutines.map((routine, rIdx) => (
-                  <div
-                    key={routine.id}
-                    className="bg-neutral-950 border border-neutral-800 rounded-xl p-3.5 space-y-2.5 hover:border-neutral-700 transition"
+            {/* Sección Sin Carpeta */}
+            {unassignedRoutines.length > 0 && (
+              <div className="border border-line rounded-md overflow-hidden bg-surface">
+                {/* Encabezado plegable Sin carpeta */}
+                <div className="flex items-center justify-between border-b border-line bg-surface-elevated">
+                  <button
+                    type="button"
+                    onClick={() => toggleFolder('unassigned')}
+                    aria-expanded={!collapsedFolderIds.has('unassigned')}
+                    className="press flex-1 min-h-12 flex items-center gap-2 px-3 text-left"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-bold text-white text-sm">{routine.name}</h3>
-                        <p className="text-xs text-neutral-400 mt-0.5">
-                          {getExerciseSummary(routine)}
-                        </p>
-                      </div>
+                    <ChevronDown
+                      size={18}
+                      className={`text-neutral-400 transition-transform duration-150 shrink-0 ${
+                        collapsedFolderIds.has('unassigned') ? '-rotate-90' : 'rotate-0'
+                      }`}
+                    />
+                    <span className="label-tech text-neutral-200 truncate flex-1">
+                      Sin carpeta
+                    </span>
+                    <span className="num text-xs text-neutral-400 bg-surface px-2 py-0.5 rounded-sm border border-line shrink-0">
+                      {unassignedRoutines.length}
+                    </span>
+                  </button>
+                </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          disabled={rIdx === 0}
-                          onClick={() => handleMoveRoutine(unassignedRoutines, rIdx, 'up')}
-                          className={`w-6 h-6 rounded flex items-center justify-center transition ${
-                            rIdx === 0
-                              ? 'text-neutral-700 bg-neutral-900/40 cursor-not-allowed'
-                              : 'text-neutral-400 bg-neutral-900 hover:bg-neutral-800 hover:text-white'
-                          }`}
-                          title="Subir rutina"
-                          aria-label="Subir rutina"
-                        >
-                          <ChevronUp size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={rIdx === unassignedRoutines.length - 1}
-                          onClick={() => handleMoveRoutine(unassignedRoutines, rIdx, 'down')}
-                          className={`w-6 h-6 rounded flex items-center justify-center transition ${
-                            rIdx === unassignedRoutines.length - 1
-                              ? 'text-neutral-700 bg-neutral-900/40 cursor-not-allowed'
-                              : 'text-neutral-400 bg-neutral-900 hover:bg-neutral-800 hover:text-white'
-                          }`}
-                          title="Bajar rutina"
-                          aria-label="Bajar rutina"
-                        >
-                          <ChevronDown size={14} />
-                        </button>
+                {!collapsedFolderIds.has('unassigned') && (
+                  <ul className="divide-y divide-line">
+                    {unassignedRoutines.map((routine, rIdx) => (
+                      <li key={routine.id} className="flex items-stretch bg-surface hover:bg-surface-elevated">
                         <button
                           type="button"
                           onClick={() => navigate(`/routines/${routine.id}/edit`)}
-                          className="w-6 h-6 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 flex items-center justify-center transition"
-                          title="Editar rutina"
-                          aria-label="Editar rutina"
+                          className="press flex-1 min-w-0 p-3 text-left"
                         >
-                          <Pencil size={13} />
+                          <span className="block text-[16px] font-semibold text-white truncate">
+                            {routine.name}
+                          </span>
+                          <span className="block text-xs font-medium text-neutral-300 mt-0.5">
+                            <span className="num">{getRoutineMeta(routine)}</span>
+                          </span>
+                          <span className="block text-xs text-neutral-400 truncate mt-1">
+                            {getExerciseSummary(routine)}
+                          </span>
                         </button>
+
                         <button
                           type="button"
-                          onClick={() => setRoutineToDelete(routine)}
-                          className="w-6 h-6 rounded text-neutral-500 hover:text-red-400 hover:bg-neutral-800 flex items-center justify-center transition"
-                          title="Eliminar rutina"
-                          aria-label="Eliminar rutina"
+                          aria-label={`Opciones de rutina ${routine.name}`}
+                          onClick={() =>
+                            setRoutineActionTarget({
+                              routine,
+                              list: unassignedRoutines,
+                              index: rIdx,
+                            })
+                          }
+                          className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-white shrink-0 border-l border-line"
                         >
-                          <Trash2 size={13} />
+                          <MoreVertical size={18} strokeWidth={1.75} />
                         </button>
-                      </div>
-                    </div>
 
-                    {/* Botón Empezar */}
-                    <div className="flex items-center gap-2 pt-1 border-t border-neutral-900">
-                      <button
-                        type="button"
-                        onClick={() => handleStartRoutine(routine)}
-                        className="w-full py-2 px-3 bg-white hover:bg-neutral-200 text-black rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
-                      >
-                        <Play size={13} fill="currentColor" />
-                        <span>Empezar entreno</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                        <button
+                          type="button"
+                          aria-label={`Empezar ${routine.name}`}
+                          onClick={() => handleStartRoutine(routine)}
+                          className="press min-w-12 min-h-12 flex items-center justify-center text-accent active:scale-95 border-l border-line shrink-0"
+                        >
+                          <Play size={20} fill="currentColor" strokeWidth={0} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
 
-      {/* MODAL: Nueva Carpeta */}
+            {/* Botón inferior Nueva Rutina */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => navigate('/routines/new')}
+                className="btn-secondary w-full"
+              >
+                <Plus size={18} strokeWidth={2} />
+                <span>Nueva rutina</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL / SHEET: Nueva Carpeta */}
       {isNewFolderOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-xs w-full space-y-4 shadow-2xl">
-            <div>
-              <h3 className="font-bold text-white text-base">Nueva Carpeta</h3>
-              <p className="text-xs text-neutral-400 mt-0.5">
-                Agrupa tus rutinas (ej. Empuje, Tirón, Pierna, Fuerza...).
-              </p>
+        <Sheet
+          title="Nueva carpeta"
+          onClose={() => setIsNewFolderOpen(false)}
+          footer={
+            <button
+              type="submit"
+              form="new-folder-form"
+              disabled={!newFolderName.trim()}
+              className="btn-primary w-full"
+            >
+              Crear carpeta
+            </button>
+          }
+        >
+          <form id="new-folder-form" onSubmit={handleCreateFolder} className="space-y-4 pt-1">
+            <p className="text-xs text-neutral-400">
+              Agrupa tus rutinas según tus bloques de entrenamiento (ej. Fuerza, Hipertrofia, Empuje/Tirón).
+            </p>
+            <div className="space-y-1.5">
+              <label htmlFor="new-folder-name" className="label-tech block">
+                Nombre de la carpeta
+              </label>
+              <input
+                id="new-folder-name"
+                type="text"
+                autoFocus
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                placeholder="Ej. Fuerza · Bloque 3"
+                className="field"
+              />
             </div>
-
-            <input
-              type="text"
-              autoFocus
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              placeholder="Nombre de la carpeta..."
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white"
-            />
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setIsNewFolderOpen(false)}
-                className="flex-1 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs font-medium transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={!newFolderName.trim()}
-                onClick={handleCreateFolder}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
-                  newFolderName.trim()
-                    ? 'bg-white hover:bg-neutral-200 text-black shadow-md'
-                    : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
-                }`}
-              >
-                Crear
-              </button>
-            </div>
-          </div>
-        </div>
+          </form>
+        </Sheet>
       )}
 
-      {/* MODAL: Renombrar Carpeta */}
+      {/* MODAL / SHEET: Opciones de Carpeta */}
+      {folderActionTarget && (
+        <Sheet
+          title={`Carpeta: ${folderActionTarget.name}`}
+          onClose={() => setFolderActionTarget(null)}
+        >
+          <div className="space-y-1 pt-1">
+            {folders && (
+              <>
+                <button
+                  type="button"
+                  disabled={folders.findIndex((f) => f.id === folderActionTarget.id) === 0}
+                  onClick={() => {
+                    const idx = folders.findIndex((f) => f.id === folderActionTarget.id)
+                    handleMoveFolder(idx, 'up')
+                    setFolderActionTarget(null)
+                  }}
+                  className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-neutral-200 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronUp size={18} />
+                  <span>Subir posición</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={
+                    folders.findIndex((f) => f.id === folderActionTarget.id) === folders.length - 1
+                  }
+                  onClick={() => {
+                    const idx = folders.findIndex((f) => f.id === folderActionTarget.id)
+                    handleMoveFolder(idx, 'down')
+                    setFolderActionTarget(null)
+                  }}
+                  className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-neutral-200 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+                >
+                  <ChevronDown size={18} />
+                  <span>Bajar posición</span>
+                </button>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                const target = folderActionTarget
+                setFolderActionTarget(null)
+                setFolderToRename(target)
+                setRenameFolderName(target.name)
+              }}
+              className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-neutral-200 hover:text-white"
+            >
+              <Pencil size={18} />
+              <span>Renombrar carpeta</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const target = folderActionTarget
+                setFolderActionTarget(null)
+                setFolderToDelete(target)
+              }}
+              className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-red-400 hover:text-red-300"
+            >
+              <Trash2 size={18} />
+              <span>Eliminar carpeta</span>
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {/* MODAL / SHEET: Renombrar Carpeta */}
       {folderToRename && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-xs w-full space-y-4 shadow-2xl">
-            <div>
-              <h3 className="font-bold text-white text-base">Renombrar Carpeta</h3>
-              <p className="text-xs text-neutral-400 mt-0.5">Introduce el nuevo nombre para la carpeta.</p>
+        <Sheet
+          title="Renombrar carpeta"
+          onClose={() => setFolderToRename(null)}
+          footer={
+            <button
+              type="submit"
+              form="rename-folder-form"
+              disabled={!renameFolderName.trim()}
+              className="btn-primary w-full"
+            >
+              Guardar cambios
+            </button>
+          }
+        >
+          <form id="rename-folder-form" onSubmit={handleRenameFolder} className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <label htmlFor="rename-folder-input" className="label-tech block">
+                Nuevo nombre
+              </label>
+              <input
+                id="rename-folder-input"
+                type="text"
+                autoFocus
+                value={renameFolderName}
+                onChange={(e) => setRenameFolderName(e.target.value)}
+                placeholder="Nombre de la carpeta..."
+                className="field"
+              />
             </div>
-
-            <input
-              type="text"
-              autoFocus
-              value={renameFolderName}
-              onChange={(e) => setRenameFolderName(e.target.value)}
-              placeholder="Nombre de la carpeta..."
-              className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-white"
-            />
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setFolderToRename(null)}
-                className="flex-1 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs font-medium transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={!renameFolderName.trim()}
-                onClick={handleRenameFolder}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
-                  renameFolderName.trim()
-                    ? 'bg-white hover:bg-neutral-200 text-black shadow-md'
-                    : 'bg-neutral-800 text-neutral-600 cursor-not-allowed'
-                }`}
-              >
-                Guardar
-              </button>
-            </div>
-          </div>
-        </div>
+          </form>
+        </Sheet>
       )}
 
-      {/* MODAL: Confirmar Eliminar Carpeta */}
+      {/* MODAL / SHEET: Confirmar Eliminar Carpeta */}
       {folderToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-xs w-full space-y-4 text-center shadow-2xl">
-            <FolderIcon size={32} className="text-white mx-auto" />
-            <div>
-              <h3 className="font-bold text-white text-base">¿Eliminar carpeta?</h3>
-              <p className="text-xs text-neutral-400 mt-1">
-                La carpeta <strong>&quot;{folderToDelete.name}&quot;</strong> será eliminada.
-                Sus rutinas <strong>no se borrarán</strong>; pasarán a &quot;Sin carpeta&quot;.
-              </p>
-            </div>
+        <Sheet
+          title="¿Eliminar carpeta?"
+          onClose={() => setFolderToDelete(null)}
+          footer={
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setFolderToDelete(null)}
-                className="flex-1 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs font-medium transition"
+                className="btn-secondary flex-1"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleDeleteFolder}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition shadow-md"
+                className="press flex-1 min-h-12 bg-red-800 text-white font-semibold rounded-md flex items-center justify-center gap-2"
               >
-                Sí, eliminar
+                Eliminar
               </button>
             </div>
+          }
+        >
+          <div className="space-y-2 pt-1 text-sm text-neutral-300">
+            <p>
+              La carpeta <strong>&quot;{folderToDelete.name}&quot;</strong> será eliminada.
+            </p>
+            <p className="text-xs text-neutral-400">
+              Sus rutinas no se borrarán: pasarán a la sección &quot;Sin carpeta&quot;.
+            </p>
           </div>
-        </div>
+        </Sheet>
       )}
 
-      {/* MODAL: Confirmar Eliminar Rutina */}
+      {/* MODAL / SHEET: Opciones de Rutina */}
+      {routineActionTarget && (
+        <Sheet
+          title={routineActionTarget.routine.name}
+          onClose={() => setRoutineActionTarget(null)}
+        >
+          <div className="space-y-1 pt-1">
+            <button
+              type="button"
+              disabled={routineActionTarget.index === 0}
+              onClick={() => {
+                handleMoveRoutine(
+                  routineActionTarget.list,
+                  routineActionTarget.index,
+                  'up'
+                )
+                setRoutineActionTarget(null)
+              }}
+              className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-neutral-200 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronUp size={18} />
+              <span>Subir posición</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={routineActionTarget.index === routineActionTarget.list.length - 1}
+              onClick={() => {
+                handleMoveRoutine(
+                  routineActionTarget.list,
+                  routineActionTarget.index,
+                  'down'
+                )
+                setRoutineActionTarget(null)
+              }}
+              className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-neutral-200 hover:text-white disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <ChevronDown size={18} />
+              <span>Bajar posición</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const r = routineActionTarget.routine
+                setRoutineActionTarget(null)
+                navigate(`/routines/${r.id}/edit`)
+              }}
+              className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-neutral-200 hover:text-white"
+            >
+              <Pencil size={18} />
+              <span>Editar plantilla</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleDuplicateRoutine(routineActionTarget.routine)}
+              className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-neutral-200 hover:text-white"
+            >
+              <Copy size={18} />
+              <span>Duplicar rutina</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const target = routineActionTarget.routine
+                setRoutineActionTarget(null)
+                setRoutineToDelete(target)
+              }}
+              className="press min-h-12 w-full flex items-center gap-3 px-3 text-left text-sm text-red-400 hover:text-red-300"
+            >
+              <Trash2 size={18} />
+              <span>Eliminar rutina</span>
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {/* MODAL / SHEET: Confirmar Eliminar Rutina */}
       {routineToDelete && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-xs w-full space-y-4 text-center shadow-2xl">
-            <Trash2 size={32} className="text-red-400 mx-auto" />
-            <div>
-              <h3 className="font-bold text-white text-base">¿Eliminar rutina?</h3>
-              <p className="text-xs text-neutral-400 mt-1">
-                ¿Seguro que deseas eliminar <strong>&quot;{routineToDelete.name}&quot;</strong>?
-                Esta acción no se puede deshacer.
-              </p>
-            </div>
+        <Sheet
+          title="¿Eliminar rutina?"
+          onClose={() => setRoutineToDelete(null)}
+          footer={
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setRoutineToDelete(null)}
-                className="flex-1 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs font-medium transition"
+                className="btn-secondary flex-1"
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={handleDeleteRoutine}
-                className="flex-1 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition shadow-md"
+                className="press flex-1 min-h-12 bg-red-800 text-white font-semibold rounded-md flex items-center justify-center gap-2"
               >
                 Eliminar
               </button>
             </div>
+          }
+        >
+          <div className="space-y-2 pt-1 text-sm text-neutral-300">
+            <p>
+              ¿Seguro que deseas eliminar <strong>&quot;{routineToDelete.name}&quot;</strong>?
+            </p>
+            <p className="text-xs text-neutral-400">
+              Esta acción no se puede deshacer. Los entrenamientos anteriores completados con esta rutina no se verán afectados.
+            </p>
           </div>
-        </div>
+        </Sheet>
       )}
 
-      {/* MODAL: Confirmar Reemplazo de Entreno Activo */}
+      {/* MODAL / SHEET: Confirmar Reemplazo de Entreno Activo */}
       {pendingRoutineToStart && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 max-w-xs w-full space-y-4 text-center shadow-2xl">
-            <AlertTriangle size={32} className="text-white mx-auto" />
-            <div>
-              <h3 className="font-bold text-white text-base">Entrenamiento en curso</h3>
-              <p className="text-xs text-neutral-400 mt-1">
-                Ya tienes una sesión activa ({activeWorkout?.name}). Si inicias{' '}
-                <strong>&quot;{pendingRoutineToStart.name}&quot;</strong>, se descartará el progreso
-                actual no guardado.
-              </p>
-            </div>
+        <Sheet
+          title="Entrenamiento en curso"
+          onClose={() => setPendingRoutineToStart(null)}
+          footer={
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setPendingRoutineToStart(null)}
-                className="flex-1 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-xl text-xs font-medium transition"
+                className="btn-secondary flex-1"
               >
-                Cancelar
+                Continuar actual
               </button>
               <button
                 type="button"
                 onClick={handleConfirmStartWithActiveWorkout}
-                className="flex-1 py-2 bg-white hover:bg-neutral-200 text-black rounded-xl text-xs font-bold transition shadow-md"
+                className="btn-primary flex-1"
               >
                 Reemplazar y empezar
               </button>
             </div>
+          }
+        >
+          <div className="space-y-3 pt-1 text-sm text-neutral-300">
+            <div className="flex items-start gap-2.5 p-3 rounded-md bg-surface-elevated border border-line">
+              <AlertTriangle size={20} className="text-accent shrink-0 mt-0.5" />
+              <div className="text-xs text-neutral-300 leading-relaxed">
+                Ya tienes una sesión activa ({activeWorkout?.name || 'Entrenamiento'}). Si inicias{' '}
+                <strong>&quot;{pendingRoutineToStart.name}&quot;</strong>, se descartará el progreso
+                actual no guardado.
+              </div>
+            </div>
           </div>
-        </div>
+        </Sheet>
       )}
     </div>
   )

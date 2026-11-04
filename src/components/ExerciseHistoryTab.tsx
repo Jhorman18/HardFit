@@ -135,23 +135,23 @@ export function ExerciseHistoryTab({
     <div className="space-y-4">
       {/* Resumen de récords personales */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800 text-center">
-          <span className="text-[10px] text-neutral-400 uppercase font-semibold block mb-0.5">
+        <div className="bg-surface border border-line p-2.5 rounded-md text-center">
+          <span className="label-tech block mb-1">
             Peso Máx.
           </span>
-          <span className="text-sm font-bold text-white">
+          <span className="num text-base font-bold text-white">
             {allTimePR.maxWeight > 0 ? `${displayWeight(allTimePR.maxWeight, unit)} ${unit}` : '-'}
           </span>
         </div>
 
-        <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800 text-center">
-          <span className="text-[10px] text-neutral-400 uppercase font-semibold block mb-0.5">
+        <div className="bg-surface border border-line p-2.5 rounded-md text-center">
+          <span className="label-tech block mb-1">
             1RM Estimado
           </span>
-          <span className="text-sm font-bold text-white flex items-center justify-center gap-1">
+          <span className="num text-base font-bold text-white flex items-center justify-center gap-1">
             {allTimePR.maxEst1RM > 0 ? (
               <>
-                <Trophy size={12} className="text-white shrink-0" />
+                <Trophy size={13} strokeWidth={2} className="text-accent shrink-0" />
                 <span>{displayWeight(allTimePR.maxEst1RM, unit)} {unit}</span>
               </>
             ) : (
@@ -160,11 +160,11 @@ export function ExerciseHistoryTab({
           </span>
         </div>
 
-        <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800 text-center">
-          <span className="text-[10px] text-neutral-400 uppercase font-semibold block mb-0.5">
+        <div className="bg-surface border border-line p-2.5 rounded-md text-center">
+          <span className="label-tech block mb-1">
             Máx. Reps
           </span>
-          <span className="text-sm font-bold text-white">
+          <span className="num text-base font-bold text-white">
             {allTimePR.maxReps > 0 ? `${allTimePR.maxReps} reps` : '-'}
           </span>
         </div>
@@ -173,7 +173,7 @@ export function ExerciseHistoryTab({
       {/* Lista de sesiones históricas o estado vacío */}
       {sessions.length > 0 ? (
         <div className="space-y-3">
-          <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
+          <span className="label-tech text-neutral-400 block pt-1">
             Sesiones registradas ({sessions.length})
           </span>
 
@@ -186,21 +186,21 @@ export function ExerciseHistoryTab({
             return (
               <div
                 key={workout.id}
-                className="bg-neutral-950 border border-neutral-800 rounded-xl p-3.5 space-y-2.5"
+                className="bg-surface border border-line rounded-md p-3.5 space-y-2.5"
               >
-                <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
+                <div className="flex items-center justify-between border-b border-line pb-2">
                   <div className="min-w-0">
-                    <span className="text-xs font-semibold text-white block truncate">
+                    <span className="text-sm font-semibold text-white block truncate">
                       {dateStr}
                     </span>
                     {workout.name && (
-                      <span className="text-[11px] text-neutral-400 block truncate mt-0.5">
+                      <span className="text-xs text-neutral-400 block truncate mt-0.5">
                         {workout.name}
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-neutral-400 font-medium bg-neutral-900 border border-neutral-800 px-2 py-0.5 rounded-full shrink-0">
-                    {validSets.length} {validSets.length === 1 ? 'serie' : 'series'}
+                  <span className="label-tech bg-surface-elevated border border-line px-2 py-0.5 rounded-sm shrink-0">
+                    <span className="num">{validSets.length}</span> {validSets.length === 1 ? 'serie' : 'series'}
                   </span>
                 </div>
 
@@ -218,34 +218,34 @@ export function ExerciseHistoryTab({
                     return (
                       <div
                         key={idx}
-                        className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-lg bg-neutral-900/70 border border-neutral-800/60"
+                        className="flex items-center justify-between text-xs py-2 px-2.5 rounded-sm bg-surface-elevated border border-line"
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-5 h-5 rounded-full bg-neutral-800 text-[10px] text-neutral-400 font-bold flex items-center justify-center shrink-0">
+                          <span className="num w-5 h-5 rounded-full bg-surface text-xs text-neutral-300 font-bold flex items-center justify-center shrink-0 border border-line">
                             {vs.originalIndex}
                           </span>
-                          <span className="font-semibold text-white truncate">
+                          <span className="num font-semibold text-white truncate text-sm">
                             {formatSetPerformance(vs.set, exercise.type, unit)}
                           </span>
                           {vs.set.rpe !== undefined &&
                             vs.set.rpe !== null &&
                             vs.set.rpe > 0 && (
-                              <span className="text-[10px] text-neutral-400 bg-neutral-800 border border-neutral-700/60 px-1.5 py-0.5 rounded font-medium shrink-0">
-                                RPE {vs.set.rpe}
+                              <span className="label-tech bg-surface border border-line px-1.5 py-0.5 rounded-sm shrink-0">
+                                RPE <span className="num">{vs.set.rpe}</span>
                               </span>
                             )}
                         </div>
 
                         <div className="flex items-center gap-1.5 shrink-0 ml-2">
                           {isBest && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-neutral-200 bg-neutral-800 border border-neutral-700 px-2 py-0.5 rounded-full">
-                              <Star size={10} className="text-white" />
+                            <span className="label-tech inline-flex items-center gap-1 text-white bg-surface border border-line-strong px-2 py-0.5 rounded-sm">
+                              <Star size={11} strokeWidth={2} className="text-accent" />
                               <span>Mejor</span>
                             </span>
                           )}
                           {isPR && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-white bg-neutral-800 border border-neutral-600 px-2 py-0.5 rounded-full shadow-sm">
-                              <Trophy size={10} className="text-white" />
+                            <span className="label-tech inline-flex items-center gap-1 text-white bg-surface border border-line-strong px-2 py-0.5 rounded-sm">
+                              <Trophy size={11} strokeWidth={2} className="text-accent" />
                               <span>PR</span>
                             </span>
                           )}
@@ -259,8 +259,8 @@ export function ExerciseHistoryTab({
           })}
         </div>
       ) : (
-        <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-6 text-center space-y-2">
-          <History size={28} className="mx-auto text-neutral-600" />
+        <div className="bg-surface border border-line rounded-md p-6 text-center space-y-2">
+          <History size={28} className="mx-auto text-neutral-400" />
           <h4 className="text-sm font-semibold text-white">
             Aún no has registrado este ejercicio
           </h4>

@@ -1,7 +1,7 @@
-import { createPortal } from 'react-dom'
-import type { WeightUnit } from '../utils/weightUnits'
 import { useState } from 'react'
-import { Timer, X, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
+import { Sheet } from './ui'
+import type { WeightUnit } from '../utils/weightUnits'
 
 export interface RestPickerProps {
   isOpen: boolean
@@ -81,54 +81,49 @@ export function RestPicker({
     }
   }
 
-  return createPortal(
-    <div
-      role="dialog" aria-modal="true" aria-label={title}
-      className="fixed inset-0 z-[80] bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-t-2xl sm:rounded-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))] space-y-4 shadow-2xl max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Cabecera */}
-        <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
-          <div className="flex items-center gap-2">
-            <Timer size={20} className="text-white" />
-            <h2 className="text-base font-bold text-white truncate max-w-[260px]">{title}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition"
-            aria-label="Cerrar"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
+  return (
+    <Sheet title={title} onClose={onClose}>
+      <div className="space-y-4 py-2">
         {currentWeightUnit && onWeightUnitChange && (
           <fieldset className="space-y-2" aria-label="Unidad de peso">
-            <legend className="text-[11px] uppercase tracking-wider font-bold text-neutral-400">Unidad de peso</legend>
+            <legend className="label-tech">Unidad de peso</legend>
             <div className="flex flex-wrap gap-2">
               {allowGlobal && globalWeightUnit && (
-                <label className="flex items-center gap-2 text-xs bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2">
-                  <input type="radio" name="weight-unit" value="global" checked={!weightUnitOverride} onChange={() => onWeightUnitChange(null)} />
-                  Global ({globalWeightUnit})
+                <label className="flex items-center gap-2 text-xs bg-elevated border border-line-strong rounded-md px-3 py-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="weight-unit"
+                    value="global"
+                    checked={!weightUnitOverride}
+                    onChange={() => onWeightUnitChange(null)}
+                  />
+                  <span>Global ({globalWeightUnit})</span>
                 </label>
               )}
-              {(['kg', 'lb'] as const).map(unit => (
-                <label key={unit} className="flex items-center gap-2 text-xs bg-neutral-950 border border-neutral-700 rounded-lg px-3 py-2">
-                  <input type="radio" name="weight-unit" value={unit} checked={currentWeightUnit === unit && (!allowGlobal || !!weightUnitOverride)} onChange={() => onWeightUnitChange(unit)} />
-                  {unit === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}
+              {(['kg', 'lb'] as const).map((unit) => (
+                <label
+                  key={unit}
+                  className="flex items-center gap-2 text-xs bg-elevated border border-line-strong rounded-md px-3 py-2 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="weight-unit"
+                    value={unit}
+                    checked={
+                      currentWeightUnit === unit && (!allowGlobal || !!weightUnitOverride)
+                    }
+                    onChange={() => onWeightUnitChange(unit)}
+                  />
+                  <span>{unit === 'kg' ? 'Kilogramos (kg)' : 'Libras (lb)'}</span>
                 </label>
               ))}
             </div>
-            <p className="text-[11px] text-neutral-400">Al cambiar la unidad, las cargas ya anotadas se convierten.</p>
+            <p className="text-xs text-neutral-400">
+              Al cambiar la unidad, las cargas ya anotadas se convierten.
+            </p>
           </fieldset>
         )}
 
-        {/* Botón opcional para usar descanso global */}
         {allowGlobal && (
           <button
             type="button"
@@ -136,18 +131,15 @@ export function RestPicker({
               if (onUseGlobal) onUseGlobal()
               onClose()
             }}
-            className="w-full py-2.5 px-3 bg-neutral-800/80 hover:bg-neutral-800 border border-neutral-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2"
+            className="press w-full min-h-12 bg-elevated border border-line-strong text-white rounded-md text-sm font-semibold flex items-center justify-center gap-2"
           >
-            <RotateCcw size={14} className="text-neutral-400" />
+            <RotateCcw size={16} strokeWidth={1.75} className="text-neutral-400" />
             <span>Usar descanso global</span>
           </button>
         )}
 
-        {/* Presets */}
         <div>
-          <div className="text-[11px] uppercase tracking-wider font-bold text-neutral-400 mb-2">
-            Opciones predefinidas
-          </div>
+          <div className="label-tech mb-2">Opciones predefinidas</div>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {PRESETS.map((preset) => {
               const isSelected = preset.seconds === currentSeconds
@@ -159,10 +151,10 @@ export function RestPicker({
                     onSelect(preset.seconds)
                     onClose()
                   }}
-                  className={`py-2 px-2 rounded-xl text-xs font-medium border text-center transition ${
+                  className={`press min-h-12 px-2 rounded-md text-sm font-semibold border text-center ${
                     isSelected
-                      ? 'bg-white text-black font-bold border-white shadow-sm'
-                      : 'bg-neutral-950 border-neutral-800 text-neutral-300 hover:text-white hover:bg-neutral-800/60'
+                      ? 'bg-accent text-accent-fg border-accent'
+                      : 'bg-elevated border-line-strong text-neutral-200'
                   }`}
                 >
                   {preset.label}
@@ -172,9 +164,8 @@ export function RestPicker({
           </div>
         </div>
 
-        {/* Input personalizado */}
-        <form onSubmit={handleApplyCustom} className="pt-2 border-t border-neutral-800 space-y-2">
-          <label className="block text-[11px] uppercase tracking-wider font-bold text-neutral-400">
+        <form onSubmit={handleApplyCustom} className="pt-2 border-t border-line space-y-2">
+          <label className="label-tech block">
             Tiempo personalizado (segundos o mm:ss)
           </label>
           <div className="flex gap-2">
@@ -186,25 +177,24 @@ export function RestPicker({
                 if (customError) setCustomError(false)
               }}
               placeholder="Ej. 75 o 1:15"
-              className={`flex-1 bg-neutral-950 border rounded-xl px-3 py-2 text-xs text-white placeholder-neutral-500 focus:outline-none transition ${
-                customError ? 'border-red-500' : 'border-neutral-800 focus:border-white'
+              className={`flex-1 field ${
+                customError ? 'border-red-400' : ''
               }`}
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-neutral-800 hover:bg-white hover:text-black border border-neutral-700 hover:border-white text-white text-xs font-semibold rounded-xl transition"
+              className="btn-secondary whitespace-nowrap"
             >
               Aplicar
             </button>
           </div>
           {customError && (
-            <p className="text-[11px] text-red-400">
+            <p className="text-xs text-red-400">
               Formato inválido. Ingresa segundos (ej. 75) o mm:ss (ej. 1:15).
             </p>
           )}
         </form>
       </div>
-    </div>,
-    document.body,
+    </Sheet>
   )
 }

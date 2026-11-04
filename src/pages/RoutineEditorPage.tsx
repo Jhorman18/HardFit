@@ -1,12 +1,7 @@
-import { RestPicker } from '../components/RestPicker'
-import { formatRest } from '../utils/formatRest'
-import { asWeightUnit, convertSetWeight, changeRoutineItemWeightUnit, inputWeight, type WeightUnit } from '../utils/weightUnits'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import {
-  ChevronLeft,
-  Check,
   AlertTriangle,
   Dumbbell,
   Plus,
@@ -17,9 +12,21 @@ import {
   ArrowLeftRight,
 } from 'lucide-react'
 import { db } from '../db'
+import { ScreenHeader } from '../components/ui/ScreenHeader'
+import { Sheet } from '../components/ui/Sheet'
+import { RestPicker } from '../components/RestPicker'
 import { ExerciseSelectorModal } from '../components/ExerciseSelectorModal'
 import { ExerciseDemo } from '../components/ExerciseDemo'
 import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
+import { formatRest } from '../utils/formatRest'
+import { parseDecimal } from '../utils/format'
+import { DecimalInput } from '../components/ui'
+import {
+  asWeightUnit,
+  convertSetWeight,
+  changeRoutineItemWeightUnit,
+  type WeightUnit,
+} from '../utils/weightUnits'
 import type { Routine, RoutineItem, RoutineItemTargetSet, Exercise } from '../types'
 
 function generateId(): string {
@@ -46,6 +53,7 @@ export function RoutineEditorPage() {
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
   const [replacingItemIndex, setReplacingItemIndex] = useState<number | null>(null)
   const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(() => Boolean(id))
 
@@ -93,7 +101,7 @@ export function RoutineEditorPage() {
   }, [id, navigate])
 
   const handleAddExercises = (exerciseIds: string[]) => {
-    setRoutineUnit(previous => previous ?? unit)
+    setRoutineUnit((previous) => previous ?? unit)
     if (replacingItemIndex !== null) {
       if (exerciseIds.length > 0) {
         setItems((prev) =>
@@ -116,7 +124,6 @@ export function RoutineEditorPage() {
       } else if (type === 'distance') {
         initialTargetSets = [{ distanceM: 1000 }]
       } else {
-        // default 3 series de 10 reps
         initialTargetSets = [
           { reps: 10, weight: undefined },
           { reps: 10, weight: undefined },
@@ -190,7 +197,11 @@ export function RoutineEditorPage() {
         if (idx !== itemIndex) return item
         const updatedSets = item.targetSets.map((s, sIdx) => {
           if (sIdx !== setIndex) return s
-          return { ...s, ...patch, ...('weight' in patch ? { weightUnit: item.weightUnit ?? unit } : {}) }
+          return {
+            ...s,
+            ...patch,
+            ...('weight' in patch ? { weightUnit: item.weightUnit ?? unit } : {}),
+          }
         })
         return { ...item, targetSets: updatedSets }
       })
@@ -249,456 +260,488 @@ export function RoutineEditorPage() {
     }
   }
 
+  const handleDeleteCurrentRoutine = async () => {
+    if (!id) return
+    try {
+      await db.routines.delete(id)
+      navigate('/routines')
+    } catch (err) {
+      console.error('Error al eliminar rutina:', err)
+    }
+  }
+
+  const totalSets = items.reduce((acc, it) => acc + (it.targetSets?.length || 0), 0)
+
   if (isLoading) {
     return (
       <div className="p-8 text-center text-neutral-400">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-3" />
         <p className="text-sm">Cargando plantilla...</p>
       </div>
     )
   }
 
   return (
-    <div className="p-4 space-y-5">
-      {/* Barra superior con volver y título */}
-      <div className="flex items-center justify-between border-b border-neutral-800 pb-3">
-        <div className="flex items-center gap-2.5">
+    <div className="flex flex-col min-h-full bg-black">
+      {/* Cabecera ScreenHeader */}
+      <ScreenHeader
+        back="/routines"
+        title={name.trim() || (isEditing ? 'Editar rutina' : 'Nueva rutina')}
+        subtitle={
+          items.length > 0 ? (
+            <span className="num">
+              {items.length} {items.length === 1 ? 'ejercicio' : 'ejercicios'} · {totalSets}{' '}
+              {totalSets === 1 ? 'serie' : 'series'}
+            </span>
+          ) : undefined
+        }
+        actions={
           <button
             type="button"
-            onClick={() => navigate('/routines')}
-            className="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition"
-            title="Volver a Rutinas"
-            aria-label="Volver a Rutinas"
+            onClick={handleSave}
+            className="press min-h-12 px-3 text-sm font-bold text-accent active:opacity-80 flex items-center"
           >
-            <ChevronLeft size={18} />
+            Guardar
           </button>
-          <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">
-              {isEditing ? 'Editar Rutina' : 'Nueva Rutina'}
-            </h1>
-            <p className="text-xs text-neutral-400">
-              {isEditing ? 'Modifica ejercicios y series objetivo' : 'Crea una plantilla de entrenamiento'}
-            </p>
-          </div>
-        </div>
+        }
+      />
 
-        <button
-          type="button"
-          onClick={handleSave}
-          className="px-4 py-2 bg-white hover:bg-neutral-200 text-black rounded-xl text-xs font-bold transition shadow-md flex items-center gap-1.5"
-        >
-          <Check size={15} />
-          <span>Guardar</span>
-        </button>
-      </div>
-
-      {errorMsg && (
-        <div className="p-3 bg-red-950/40 border border-red-800/60 rounded-xl text-xs text-red-300 flex items-center gap-2">
-          <AlertTriangle size={16} className="text-red-400 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* Datos básicos: Nombre y Carpeta */}
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-3.5">
-        <div>
-          <label htmlFor="routine-name" className="block text-xs font-semibold uppercase text-neutral-400 mb-1.5">
-            Nombre de la rutina <span className="text-white">*</span>
-          </label>
-          <input
-            id="routine-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ej. Pecho y Tríceps, Pierna Fuerza, Full Body A..."
-            className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-white placeholder-neutral-500 focus:outline-none focus:border-white transition"
-          />
-        </div>
-
-        <div>
-          <label htmlFor="routine-folder" className="block text-xs font-semibold uppercase text-neutral-400 mb-1.5">
-            Carpeta de organización
-          </label>
-          <select
-            id="routine-folder"
-            value={folderId}
-            onChange={(e) => setFolderId(e.target.value)}
-            className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-3.5 py-2.5 text-sm font-medium text-neutral-200 focus:outline-none focus:border-white transition"
-          >
-            <option value="">(Sin carpeta / Suelta)</option>
-            {folders?.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <button type="button" onClick={() => setPicker('global')} aria-label="Configurar descanso y unidad global" className="px-3 py-2 rounded-xl border border-neutral-800 bg-neutral-900 text-xs text-neutral-300">
-        Descanso: {formatRest(routineRest ?? defaultRest)} · {unit}
-      </button>
-
-      {/* Lista de Ejercicios */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider">
-            Ejercicios ({items.length})
-          </h2>
-          <span className="text-xs text-neutral-500">Configura las series objetivo</span>
-        </div>
-
-        {items.length === 0 ? (
-          <div className="bg-neutral-900 border border-dashed border-neutral-800 rounded-2xl p-8 text-center space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-neutral-800 text-neutral-400 flex items-center justify-center mx-auto">
-              <Dumbbell size={24} />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">Sin ejercicios en la rutina</p>
-              <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto">
-                Añade movimientos de la biblioteca para definir las series, repeticiones y cargas objetivo.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsSelectorOpen(true)}
-              className="py-2.5 px-4 bg-white hover:bg-neutral-200 text-black rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus size={15} />
-              <span>Añadir ejercicios</span>
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3.5">
-            {items.map((item, itemIdx) => {
-              const exercise = exerciseMap.get(item.exerciseId)
-              const exType = exercise?.type ?? 'weight_reps'
-              const unit = item.weightUnit ?? routineUnit ?? appUnit
-
-              return (
-                <div
-                  key={`${item.exerciseId}-${itemIdx}`}
-                  className="bg-neutral-900 border border-neutral-800 rounded-2xl overflow-hidden shadow-sm"
-                >
-                  {/* Encabezado del Ejercicio */}
-                  <div className="p-3.5 border-b border-neutral-800 bg-neutral-900/95 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-6 h-6 rounded-lg bg-neutral-800 border border-neutral-700 text-white font-bold text-xs flex items-center justify-center shrink-0">
-                        {itemIdx + 1}
-                      </span>
-                      <ExerciseDemo
-                        exerciseId={item.exerciseId}
-                        variant="thumb"
-                        className="w-10 h-10 shrink-0"
-                        onClick={() => setPreviewExerciseId(item.exerciseId)}
-                      />
-                      <div className="min-w-0">
-                        <h3
-                          onClick={() => setPreviewExerciseId(item.exerciseId)}
-                          className="font-bold text-white text-sm leading-snug truncate cursor-pointer hover:text-neutral-300 transition"
-                        >
-                          {exercise?.name ?? 'Ejercicio desconocido'}
-                        </h3>
-                        <div className="flex items-center gap-2 text-[11px] text-neutral-400 mt-0.5">
-                          <span className="text-white font-medium">{exercise?.muscleGroup ?? 'General'}</span>
-                          <span>•</span>
-                          <span>{exercise?.equipment ?? 'Equipo'}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Acciones de reordenar y eliminar */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReplacingItemIndex(itemIdx)
-                          setIsSelectorOpen(true)
-                        }}
-                        className="px-2 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-750 text-neutral-300 hover:text-white flex items-center gap-1 text-xs font-medium transition border border-neutral-700/60 mr-1"
-                        title="Cambiar este ejercicio por otro manteniendo las series"
-                        aria-label="Cambiar ejercicio"
-                      >
-                        <ArrowLeftRight size={13} />
-                        <span>Cambiar</span>
-                      </button>
-                      <button
-                        type="button"
-                        disabled={itemIdx === 0}
-                        onClick={() => handleMoveExercise(itemIdx, 'up')}
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition ${
-                          itemIdx === 0
-                            ? 'text-neutral-700 bg-neutral-950/40 cursor-not-allowed'
-                            : 'text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-white'
-                        }`}
-                        title="Subir posición"
-                        aria-label="Subir posición"
-                      >
-                        <ChevronUp size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={itemIdx === items.length - 1}
-                        onClick={() => handleMoveExercise(itemIdx, 'down')}
-                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition ${
-                          itemIdx === items.length - 1
-                            ? 'text-neutral-700 bg-neutral-950/40 cursor-not-allowed'
-                            : 'text-neutral-300 bg-neutral-800 hover:bg-neutral-700 hover:text-white'
-                        }`}
-                        title="Bajar posición"
-                        aria-label="Bajar posición"
-                      >
-                        <ChevronDown size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveExercise(itemIdx)}
-                        className="w-7 h-7 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-neutral-800 flex items-center justify-center transition ml-1"
-                        title="Eliminar ejercicio de la rutina"
-                        aria-label="Eliminar ejercicio de la rutina"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <button type="button" onClick={() => setPicker(itemIdx)} aria-label={'Configurar descanso y unidad de ' + (exercise?.name ?? 'ejercicio')} className="mx-3 mt-2 px-3 py-1.5 rounded-lg border border-neutral-800 bg-neutral-950 text-xs text-neutral-300">
-                    Descanso: {formatRest(item.restSeconds ?? routineRest ?? defaultRest)}
-                    {exType !== 'duration' && exType !== 'distance' && <> · {unit}</>}
-                  </button>
-
-                  {/* Tabla de Series Objetivo */}
-                  <div className="p-3 overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="text-[10px] uppercase font-bold text-neutral-400 border-b border-neutral-800">
-                          <th className="pb-2 w-10 text-center">Serie</th>
-                          {exType === 'duration' ? (
-                            <th className="pb-2 text-center">Segundos obj.</th>
-                          ) : exType === 'distance' ? (
-                            <>
-                              <th className="pb-2 text-center">Metros obj.</th>
-                              <th className="pb-2 text-center">Segundos obj.</th>
-                            </>
-                          ) : (
-                            <>
-                              <th className="pb-2 w-24 text-center">{unit.toUpperCase()} obj.</th>
-                              <th className="pb-2 w-20 text-center">Reps obj.</th>
-                            </>
-                          )}
-                          <th className="pb-2 w-16 text-center">RPE</th>
-                          <th className="pb-2 w-8 text-center"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-neutral-800/40">
-                        {item.targetSets.map((ts, sIdx) => (
-                          <tr key={sIdx} className="hover:bg-neutral-800/30 transition">
-                            <td className="py-1.5 px-1 text-center text-xs font-mono font-semibold text-neutral-400">
-                              {sIdx + 1}
-                            </td>
-
-                            {exType === 'duration' ? (
-                              <td className="py-1.5 px-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="5"
-                                  placeholder="60"
-                                  value={ts.durationSec ?? ''}
-                                  onChange={(e) =>
-                                    handleUpdateTargetSet(itemIdx, sIdx, {
-                                      durationSec:
-                                        e.target.value === '' ? undefined : Number(e.target.value),
-                                    })
-                                  }
-                                  className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-xs font-semibold text-white focus:outline-none focus:border-white"
-                                />
-                              </td>
-                            ) : exType === 'distance' ? (
-                              <>
-                                <td className="py-1.5 px-1">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="50"
-                                    placeholder="1000"
-                                    value={ts.distanceM ?? ''}
-                                    onChange={(e) =>
-                                      handleUpdateTargetSet(itemIdx, sIdx, {
-                                        distanceM:
-                                          e.target.value === '' ? undefined : Number(e.target.value),
-                                      })
-                                    }
-                                    className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-xs font-semibold text-white focus:outline-none focus:border-white"
-                                  />
-                                </td>
-                                <td className="py-1.5 px-1">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="5"
-                                    placeholder="300"
-                                    value={ts.durationSec ?? ''}
-                                    onChange={(e) =>
-                                      handleUpdateTargetSet(itemIdx, sIdx, {
-                                        durationSec:
-                                          e.target.value === '' ? undefined : Number(e.target.value),
-                                      })
-                                    }
-                                    className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-xs font-semibold text-white focus:outline-none focus:border-white"
-                                  />
-                                </td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="py-1.5 px-1">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="any"
-                                    placeholder="0"
-                                    value={inputWeight(convertSetWeight(ts, unit).weight)}
-                                    onChange={(e) =>
-                                      handleUpdateTargetSet(itemIdx, sIdx, {
-                                        weight:
-                                          e.target.value === '' ? undefined : Number(e.target.value),
-                                      })
-                                    }
-                                    className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-xs font-semibold text-white focus:outline-none focus:border-white"
-                                  />
-                                </td>
-                                <td className="py-1.5 px-1">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    step="1"
-                                    placeholder="10"
-                                    value={ts.reps ?? ''}
-                                    onChange={(e) =>
-                                      handleUpdateTargetSet(itemIdx, sIdx, {
-                                        reps:
-                                          e.target.value === '' ? undefined : Number(e.target.value),
-                                      })
-                                    }
-                                    className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-xs font-semibold text-white focus:outline-none focus:border-white"
-                                  />
-                                </td>
-                              </>
-                            )}
-
-                            <td className="py-1.5 px-1">
-                              <input
-                                type="number"
-                                min="1"
-                                max="10"
-                                step="0.5"
-                                placeholder="8"
-                                value={ts.rpe ?? ''}
-                                onChange={(e) =>
-                                  handleUpdateTargetSet(itemIdx, sIdx, {
-                                    rpe: e.target.value === '' ? undefined : Number(e.target.value),
-                                  })
-                                }
-                                className="w-full text-center bg-neutral-950 border border-neutral-800 rounded-lg py-1 px-1 text-xs font-semibold text-neutral-300 focus:outline-none focus:border-white"
-                              />
-                            </td>
-
-                            <td className="py-1.5 px-1 text-center">
-                              {item.targetSets.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveTargetSet(itemIdx, sIdx)}
-                                  className="text-neutral-500 hover:text-red-400 p-1 transition"
-                                  title="Quitar serie objetivo"
-                                  aria-label="Quitar serie objetivo"
-                                >
-                                  <X size={14} />
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    <button
-                      type="button"
-                      onClick={() => handleAddTargetSet(itemIdx)}
-                      className="w-full mt-2.5 py-1.5 bg-neutral-800/60 hover:bg-neutral-800 border border-neutral-700 rounded-xl text-xs font-medium text-neutral-300 hover:text-white transition flex items-center justify-center gap-1"
-                    >
-                      <Plus size={14} />
-                      <span>Añadir serie objetivo</span>
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
+      <div className="flex-1 p-4 space-y-5">
+        {errorMsg && (
+          <div className="p-3 bg-surface-elevated border border-red-400 rounded-md text-xs text-red-300 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-400 shrink-0" />
+            <span>{errorMsg}</span>
           </div>
         )}
 
-        {/* Botón para añadir más ejercicios */}
-        <button
-          type="button"
-          onClick={() => setIsSelectorOpen(true)}
-          className="w-full py-3 bg-neutral-900 hover:bg-neutral-800 border border-dashed border-neutral-700 hover:border-neutral-500 text-white rounded-2xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
-        >
-          <Plus size={16} />
-          <span>Añadir ejercicio a la rutina</span>
-        </button>
+        {/* Campos básicos: Nombre y Carpeta */}
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label htmlFor="routine-name" className="label-tech block">
+              Nombre de la rutina <span className="text-accent">*</span>
+            </label>
+            <input
+              id="routine-name"
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                if (errorMsg) setErrorMsg(null)
+              }}
+              placeholder="Ej. Empuje A, Torso Fuerza, Pierna..."
+              className="field"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="routine-folder" className="label-tech block">
+              Carpeta
+            </label>
+            <select
+              id="routine-folder"
+              value={folderId}
+              onChange={(e) => setFolderId(e.target.value)}
+              className="field"
+            >
+              <option value="">(Sin carpeta)</option>
+              {folders?.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Configuración global de descanso y unidad */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setPicker('global')}
+              aria-label="Configurar descanso y unidad global"
+              className="press min-h-12 w-full flex items-center justify-between px-3.5 bg-surface border border-line rounded-md text-xs text-neutral-300 hover:text-white"
+            >
+              <span className="label-tech">Descanso predeterminado</span>
+              <span className="font-semibold text-white">
+                <span className="num">{formatRest(routineRest ?? defaultRest)}</span> · {unit.toUpperCase()}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Sección de Ejercicios */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between border-b border-line pb-2">
+            <h2 className="section-title">
+              Ejercicios (<span className="num">{items.length}</span>)
+            </h2>
+            <span className="label-tech">Series objetivo</span>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="panel p-8 text-center space-y-3 border-dashed">
+              <div className="w-12 h-12 rounded-md bg-surface-elevated border border-line text-neutral-400 flex items-center justify-center mx-auto">
+                <Dumbbell size={24} strokeWidth={1.75} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">Sin ejercicios en la rutina</p>
+                <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto">
+                  Añade movimientos de la biblioteca para definir series, repeticiones y cargas objetivo.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSelectorOpen(true)}
+                className="btn-primary"
+              >
+                <Plus size={16} strokeWidth={2} />
+                <span>Añadir ejercicios</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {items.map((item, itemIdx) => {
+                const exercise = exerciseMap.get(item.exerciseId)
+                const exType = exercise?.type ?? 'weight_reps'
+                const itemWeightUnit = item.weightUnit ?? routineUnit ?? appUnit
+
+                return (
+                  <div
+                    key={`${item.exerciseId}-${itemIdx}`}
+                    className="border border-line rounded-md overflow-hidden bg-surface"
+                  >
+                    {/* Encabezado del ejercicio */}
+                    <div className="p-3 border-b border-line bg-surface-elevated flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <ExerciseDemo
+                          exerciseId={item.exerciseId}
+                          variant="thumb"
+                          className="shrink-0"
+                          onClick={() => setPreviewExerciseId(item.exerciseId)}
+                        />
+                        <div className="min-w-0">
+                          <h3
+                            onClick={() => setPreviewExerciseId(item.exerciseId)}
+                            className="font-semibold text-white text-sm leading-snug truncate cursor-pointer hover:text-accent"
+                          >
+                            {exercise?.name ?? 'Ejercicio desconocido'}
+                          </h3>
+                          <div className="label-tech text-neutral-400 mt-0.5 truncate">
+                            {exercise?.muscleGroup ?? 'General'} · {exercise?.equipment ?? 'Equipo'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botones de acción del ejercicio (al menos 48x48 px táctiles) */}
+                      <div className="flex items-center shrink-0">
+                        <button
+                          type="button"
+                          disabled={itemIdx === 0}
+                          onClick={() => handleMoveExercise(itemIdx, 'up')}
+                          className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-white disabled:opacity-20 disabled:pointer-events-none"
+                          aria-label={`Subir posición de ${exercise?.name ?? 'ejercicio'}`}
+                        >
+                          <ChevronUp size={18} strokeWidth={1.75} />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={itemIdx === items.length - 1}
+                          onClick={() => handleMoveExercise(itemIdx, 'down')}
+                          className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-white disabled:opacity-20 disabled:pointer-events-none"
+                          aria-label={`Bajar posición de ${exercise?.name ?? 'ejercicio'}`}
+                        >
+                          <ChevronDown size={18} strokeWidth={1.75} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplacingItemIndex(itemIdx)
+                            setIsSelectorOpen(true)
+                          }}
+                          className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-white"
+                          aria-label={`Cambiar ${exercise?.name ?? 'ejercicio'}`}
+                        >
+                          <ArrowLeftRight size={16} strokeWidth={1.75} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExercise(itemIdx)}
+                          className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-red-400"
+                          aria-label={`Eliminar ${exercise?.name ?? 'ejercicio'} de la rutina`}
+                        >
+                          <Trash2 size={16} strokeWidth={1.75} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Barra de descanso y unidad por ejercicio */}
+                    <div className="px-3 py-2 border-b border-line bg-surface flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setPicker(itemIdx)}
+                        aria-label={`Configurar descanso y unidad de ${exercise?.name ?? 'ejercicio'}`}
+                        className="press min-h-12 flex items-center gap-2 text-xs text-neutral-300 hover:text-white"
+                      >
+                        <span className="label-tech text-neutral-400">Descanso:</span>
+                        <span className="font-semibold text-white">
+                          <span className="num">
+                            {formatRest(item.restSeconds ?? routineRest ?? defaultRest)}
+                          </span>
+                          {exType !== 'duration' && exType !== 'distance' && (
+                            <> · {itemWeightUnit.toUpperCase()}</>
+                          )}
+                        </span>
+                      </button>
+                    </div>
+
+                    {/* Tabla de series objetivo estilo hoja de competición */}
+                    <div className="p-3 overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="label-tech border-b border-line text-neutral-400">
+                            <th className="pb-2 w-10 text-center">Serie</th>
+                            {exType === 'duration' ? (
+                              <th className="pb-2 text-center">Segundos obj.</th>
+                            ) : exType === 'distance' ? (
+                              <>
+                                <th className="pb-2 text-center">Metros obj.</th>
+                                <th className="pb-2 text-center">Segundos obj.</th>
+                              </>
+                            ) : (
+                              <>
+                                <th className="pb-2 w-28 text-center">
+                                  {itemWeightUnit.toUpperCase()} obj.
+                                </th>
+                                <th className="pb-2 w-20 text-center">Reps obj.</th>
+                              </>
+                            )}
+                            <th className="pb-2 w-20 text-center">RPE</th>
+                            <th className="pb-2 w-12 text-center"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-line">
+                          {item.targetSets.map((ts, sIdx) => (
+                            <tr key={sIdx}>
+                              <td className="py-2 px-1 text-center num text-sm text-neutral-300">
+                                {sIdx + 1}
+                              </td>
+
+                              {exType === 'duration' ? (
+                                <td className="py-2 px-1">
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder="60"
+                                    value={ts.durationSec ?? ''}
+                                    onChange={(e) =>
+                                      handleUpdateTargetSet(itemIdx, sIdx, {
+                                        durationSec: parseDecimal(e.target.value),
+                                      })
+                                    }
+                                    className="field text-center num text-base"
+                                  />
+                                </td>
+                              ) : exType === 'distance' ? (
+                                <>
+                                  <td className="py-2 px-1">
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="1000"
+                                      value={ts.distanceM ?? ''}
+                                      onChange={(e) =>
+                                        handleUpdateTargetSet(itemIdx, sIdx, {
+                                          distanceM: parseDecimal(e.target.value),
+                                        })
+                                      }
+                                      className="field text-center num text-base"
+                                    />
+                                  </td>
+                                  <td className="py-2 px-1">
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="300"
+                                      value={ts.durationSec ?? ''}
+                                      onChange={(e) =>
+                                        handleUpdateTargetSet(itemIdx, sIdx, {
+                                          durationSec: parseDecimal(e.target.value),
+                                        })
+                                      }
+                                      className="field text-center num text-base"
+                                    />
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="py-2 px-1">
+                                    <DecimalInput
+                                      placeholder="0,0"
+                                      value={convertSetWeight(ts, itemWeightUnit).weight}
+                                      onValueChange={(weight) => handleUpdateTargetSet(itemIdx, sIdx, { weight })}
+                                      className="field text-center num text-base"
+                                    />
+                                  </td>
+                                  <td className="py-2 px-1">
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      placeholder="10"
+                                      value={ts.reps ?? ''}
+                                      onChange={(e) =>
+                                        handleUpdateTargetSet(itemIdx, sIdx, {
+                                          reps: parseDecimal(e.target.value),
+                                        })
+                                      }
+                                      className="field text-center num text-base"
+                                    />
+                                  </td>
+                                </>
+                              )}
+
+                              <td className="py-2 px-1">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="8"
+                                  value={ts.rpe ?? ''}
+                                  onChange={(e) =>
+                                    handleUpdateTargetSet(itemIdx, sIdx, {
+                                      rpe: parseDecimal(e.target.value),
+                                    })
+                                  }
+                                  className="field text-center num text-base text-neutral-300"
+                                />
+                              </td>
+
+                              <td className="py-2 px-1 text-center">
+                                {item.targetSets.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveTargetSet(itemIdx, sIdx)}
+                                    aria-label="Quitar serie objetivo"
+                                    className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-red-400 mx-auto"
+                                  >
+                                    <X size={16} strokeWidth={1.75} />
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAddTargetSet(itemIdx)}
+                          className="btn-secondary w-full"
+                        >
+                          <Plus size={16} strokeWidth={2} />
+                          <span>Añadir serie objetivo</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Botón para añadir más ejercicios */}
+              <button
+                type="button"
+                onClick={() => setIsSelectorOpen(true)}
+                className="btn-secondary w-full"
+              >
+                <Plus size={18} strokeWidth={2} />
+                <span>Añadir ejercicios a la rutina</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Botón de eliminar rutina si estamos editando */}
+        {isEditing && (
+          <div className="pt-4 border-t border-line">
+            <button
+              type="button"
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              className="press w-full min-h-12 flex items-center justify-center gap-2 text-sm font-semibold text-red-400 hover:text-red-300 bg-surface border border-line rounded-md"
+            >
+              <Trash2 size={16} />
+              <span>Eliminar rutina</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Botones de acción inferiores */}
-      <div className="pt-2 flex gap-2">
-        <button
-          type="button"
-          onClick={() => navigate('/routines')}
-          className="flex-1 py-3 px-4 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 rounded-xl text-xs font-semibold transition"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="flex-2 py-3 px-4 bg-white hover:bg-neutral-200 text-black rounded-xl text-xs font-bold transition shadow-lg flex items-center justify-center gap-1.5"
-        >
-          <Check size={16} />
-          <span>Guardar rutina</span>
-        </button>
-      </div>
-
+      {/* RestPicker para descanso y unidad */}
       {picker !== null && (
         <RestPicker
           isOpen
-          title={picker === 'global' ? 'Descanso y unidad global' : (exerciseMap.get(items[picker].exerciseId)?.name ?? 'Ejercicio')}
-          currentSeconds={picker === 'global' ? routineRest ?? defaultRest : items[picker].restSeconds ?? routineRest ?? defaultRest}
+          title={
+            picker === 'global'
+              ? 'Descanso y unidad global'
+              : (exerciseMap.get(items[picker]?.exerciseId)?.name ?? 'Ejercicio')
+          }
+          currentSeconds={
+            picker === 'global'
+              ? routineRest ?? defaultRest
+              : items[picker]?.restSeconds ?? routineRest ?? defaultRest
+          }
           allowGlobal={picker !== 'global'}
-          currentWeightUnit={picker === 'global' ? unit : ['duration', 'distance'].includes(exerciseMap.get(items[picker].exerciseId)?.type ?? '') ? undefined : items[picker].weightUnit ?? unit}
+          currentWeightUnit={
+            picker === 'global'
+              ? unit
+              : ['duration', 'distance'].includes(
+                    exerciseMap.get(items[picker]?.exerciseId)?.type ?? ''
+                  )
+                ? undefined
+                : items[picker]?.weightUnit ?? unit
+          }
           globalWeightUnit={unit}
-          weightUnitOverride={picker === 'global' ? undefined : items[picker].weightUnit}
+          weightUnitOverride={picker === 'global' ? undefined : items[picker]?.weightUnit}
           onWeightUnitChange={(selected) => {
             if (picker === 'global') {
               const next = selected ?? appUnit
-              setItems(prev => prev.map(item => {
-                if (item.weightUnit || ['duration', 'distance'].includes(exerciseMap.get(item.exerciseId)?.type ?? '')) return item
-                const converted = changeRoutineItemWeightUnit(item, unit, next)
-                const { weightUnit: _unit, ...inherited } = converted
-                return inherited
-              }))
+              setItems((prev) =>
+                prev.map((item) => {
+                  if (
+                    item.weightUnit ||
+                    ['duration', 'distance'].includes(
+                      exerciseMap.get(item.exerciseId)?.type ?? ''
+                    )
+                  )
+                    return item
+                  const converted = changeRoutineItemWeightUnit(item, unit, next)
+                  const { weightUnit: _unit, ...inherited } = converted
+                  return inherited
+                })
+              )
               setRoutineUnit(next)
             } else {
-              setItems(prev => prev.map((item,index) => index === picker ? changeRoutineItemWeightUnit(item, unit, selected) : item))
+              setItems((prev) =>
+                prev.map((item, index) =>
+                  index === picker ? changeRoutineItemWeightUnit(item, unit, selected) : item
+                )
+              )
             }
           }}
           onSelect={(seconds) => {
             if (picker === 'global') setRoutineRest(seconds)
-            else setItems(prev => prev.map((item,index) => index === picker ? { ...item, restSeconds: seconds } : item))
+            else
+              setItems((prev) =>
+                prev.map((item, index) =>
+                  index === picker ? { ...item, restSeconds: seconds } : item
+                )
+              )
           }}
           onUseGlobal={() => {
-            if (picker !== 'global') setItems(prev => prev.map((item,index) => {
-              if (index !== picker) return item
-              const { restSeconds: _rest, ...remaining } = item
-              return remaining
-            }))
+            if (picker !== 'global')
+              setItems((prev) =>
+                prev.map((item, index) => {
+                  if (index !== picker) return item
+                  const { restSeconds: _rest, ...remaining } = item
+                  return remaining
+                })
+              )
           }}
           onClose={() => setPicker(null)}
         />
@@ -714,13 +757,47 @@ export function RoutineEditorPage() {
         onSelectExercises={handleAddExercises}
       />
 
-      {/* Modal de vista previa del ejercicio */}
+      {/* Vista previa del ejercicio */}
       {previewExerciseId && (
         <ExercisePreviewModal
           exerciseId={previewExerciseId}
           onClose={() => setPreviewExerciseId(null)}
-          onAdd={() => setPreviewExerciseId(null)}
         />
+      )}
+
+      {/* Sheet de confirmación de eliminación de rutina */}
+      {isDeleteConfirmOpen && (
+        <Sheet
+          title="¿Eliminar rutina?"
+          onClose={() => setIsDeleteConfirmOpen(false)}
+          footer={
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="btn-secondary flex-1"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteCurrentRoutine}
+                className="press flex-1 min-h-12 bg-red-800 text-white font-semibold rounded-md flex items-center justify-center gap-2"
+              >
+                Eliminar
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-2 pt-1 text-sm text-neutral-300">
+            <p>
+              ¿Seguro que deseas eliminar <strong>&quot;{name}&quot;</strong>?
+            </p>
+            <p className="text-xs text-neutral-400">
+              Esta acción no se puede deshacer. Los registros de entrenamientos anteriores se conservan intactos.
+            </p>
+          </div>
+        </Sheet>
       )}
     </div>
   )

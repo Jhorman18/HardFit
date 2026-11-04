@@ -2,7 +2,7 @@ import { asWeightUnit, getEntryWeightUnit, stampWorkoutWeightUnits, changeWorkou
 import { create } from 'zustand'
 import { db } from '../db'
 import { syncNow } from '../sync'
-import type { Workout, WorkoutEntry, WorkoutSetEntry, Routine, ActiveWorkoutRecord } from '../types'
+import type { Workout, WorkoutEntry, WorkoutSetEntry, Routine, ActiveWorkoutRecord, SetType } from '../types'
 import {
   initRestNotifications,
   startRestNotifications,
@@ -40,7 +40,7 @@ export interface WorkoutSessionState {
   addSet: (entryIndex: number) => void
   updateSet: (entryIndex: number, setIndex: number, patch: Partial<WorkoutSetEntry>) => void
   toggleSetCompleted: (entryIndex: number, setIndex: number) => void
-  setSetType: (entryIndex: number, setIndex: number, type: 'normal' | 'warmup') => void
+  setSetType: (entryIndex: number, setIndex: number, type: SetType) => void
   removeSet: (entryIndex: number, setIndex: number) => void
 
   // Rest Timer controls
@@ -452,7 +452,7 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
     }
   },
 
-  setSetType: (entryIndex: number, setIndex: number, type: 'normal' | 'warmup') => {
+  setSetType: (entryIndex: number, setIndex: number, type: SetType) => {
     const { activeWorkout } = get()
     if (!activeWorkout) return
 

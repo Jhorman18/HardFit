@@ -47,7 +47,7 @@ export function App() {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 text-center">
         <div className="w-10 h-10 border-2 border-white border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-lg font-bold text-white">Iniciando Kitaeru...</h2>
+        <h2 className="text-lg font-bold text-white">Iniciando HardFit...</h2>
         <p className="text-xs text-neutral-400 mt-1">Cargando base de datos local</p>
       </div>
     )

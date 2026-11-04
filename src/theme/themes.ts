@@ -7,12 +7,14 @@ export interface ThemeDef {
   vars: Record<string, string>
   defaultAccent: string
   bgHex: string
-  font?: 'system' | 'replog'
 }
 
 export interface AccentPreset {
   name: string
+  /** Variante para temas oscuros. */
   hex: string
+  /** Variante para el tema claro: el acento también se usa como texto sobre fondo claro. */
+  lightHex: string
 }
 
 export function hexToRgb(hex: string): string {
@@ -32,17 +34,15 @@ export function getLuminance(hex: string): number {
   const b = bigint & 255
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const s = c / 255
-    return s <= 0.03928 ? s / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
   })
   return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
 }
 
 export function getOnAccent(accentHex: string): { hex: string; rgb: string } {
-  // Orange #f97316 (L ~0.33), white #ffffff (L 1.0), yellow (L ~0.45), green (L ~0.40) -> dark text #0b0f14
-  // Blue #3b82f6 (L ~0.23), black #0b0f14 (L 0.003), red, purple, pink -> white text #ffffff
   const isLight = getLuminance(accentHex) > 0.3
   return isLight
-    ? { hex: '#0b0f14', rgb: '11 15 20' }
+    ? { hex: '#141310', rgb: '20 19 16' }
     : { hex: '#ffffff', rgb: '255 255 255' }
 }
 
@@ -170,54 +170,48 @@ export function getStateColorVars(mode: 'dark' | 'light'): Record<string, string
   return vars
 }
 
+function neutralScale(hexes: string[]): Record<string, string> {
+  const tones = [50, 100, 200, 300, 400, 500, 600, 700, 750, 800, 850, 900, 950]
+  return Object.fromEntries(tones.map((tone, index) => [`n-${tone}`, hexToRgb(hexes[index])]))
+}
+
+/*
+ * La escala de la app es la del sistema HardFit con un matiz: bg-black es el fondo de pantalla
+ * y bg-neutral-900 la superficie (#1B1B18), para que las clases existentes sigan significando lo mismo.
+ */
 export const THEMES: Record<ThemeId, ThemeDef> = {
   clasico: {
     id: 'clasico',
-    name: 'Clásico oscuro',
+    name: 'Clásico',
     mode: 'dark',
-    defaultAccent: '#ffffff',
-    bgHex: '#000000',
-    font: 'system',
+    defaultAccent: '#F2BF1D',
+    bgHex: '#121210',
     vars: {
-      bg: '0 0 0',
-      fg: '255 255 255',
-      'n-50': '250 250 250',
-      'n-100': '245 245 245',
-      'n-200': '229 229 229',
-      'n-300': '212 212 212',
-      'n-400': '163 163 163',
-      'n-500': '115 115 115',
-      'n-600': '82 82 82',
-      'n-700': '64 64 64',
-      'n-750': '51 51 51',
-      'n-800': '38 38 38',
-      'n-900': '23 23 23',
-      'n-950': '10 10 10',
+      bg: hexToRgb('#121210'),
+      fg: hexToRgb('#EFEBE1'),
+      ...neutralScale(['#EFEBE1', '#E5E0D4', '#D1CBC0', '#B3AFA3', '#918D82', '#6E6A60', '#57544C', '#3D3A34', '#32302B', '#262622', '#20201C', '#1B1B18', '#0A0A09']),
+      surface: hexToRgb('#1B1B18'),
+      elevated: hexToRgb('#262622'),
+      line: hexToRgb('#262622'),
+      'line-strong': hexToRgb('#3D3A34'),
       ...getStateColorVars('dark'),
     },
   },
+  // 'replog' es un identificador interno: en la interfaz este tema se llama Carbón.
   replog: {
     id: 'replog',
-    name: 'Kitaeru',
+    name: 'Carbón',
     mode: 'dark',
-    defaultAccent: '#f97316',
-    bgHex: '#0b0f14',
-    font: 'replog',
+    defaultAccent: '#F2BF1D',
+    bgHex: '#0F0F0E',
     vars: {
-      bg: hexToRgb('#0b0f14'),
-      fg: hexToRgb('#f2f4f7'),
-      'n-50': hexToRgb('#f8fafc'),
-      'n-100': hexToRgb('#eef1f5'),
-      'n-200': hexToRgb('#dce1e8'),
-      'n-300': hexToRgb('#c9d0da'),
-      'n-400': hexToRgb('#a3acb9'),
-      'n-500': hexToRgb('#7b8594'),
-      'n-600': hexToRgb('#5a6372'),
-      'n-700': hexToRgb('#2b3340'),
-      'n-750': hexToRgb('#252d38'),
-      'n-800': hexToRgb('#1f2630'),
-      'n-900': hexToRgb('#171d26'),
-      'n-950': hexToRgb('#11161d'),
+      bg: hexToRgb('#0F0F0E'),
+      fg: hexToRgb('#F2F1EC'),
+      ...neutralScale(['#F2F1EC', '#E4E3DD', '#C9C8C1', '#ACABA4', '#8A8983', '#6A6964', '#504F4B', '#383835', '#2D2D2B', '#232322', '#1D1D1C', '#181817', '#080808']),
+      surface: hexToRgb('#181817'),
+      elevated: hexToRgb('#232322'),
+      line: hexToRgb('#383835'),
+      'line-strong': hexToRgb('#504F4B'),
       ...getStateColorVars('dark'),
     },
   },
@@ -225,44 +219,46 @@ export const THEMES: Record<ThemeId, ThemeDef> = {
     id: 'claro',
     name: 'Claro',
     mode: 'light',
-    defaultAccent: '#0b0f14',
-    bgHex: '#f7f8fa',
-    font: 'system',
+    defaultAccent: '#8A6400',
+    bgHex: '#FFFFFF',
     vars: {
-      bg: hexToRgb('#f7f8fa'),
-      fg: hexToRgb('#0b0f14'),
-      'n-50': hexToRgb('#0b0f14'),
-      'n-100': hexToRgb('#151920'),
-      'n-200': hexToRgb('#1f252d'),
-      'n-300': hexToRgb('#343b45'),
-      'n-400': hexToRgb('#4f5864'),
-      'n-500': hexToRgb('#6b7480'),
-      'n-600': hexToRgb('#9aa3ae'),
-      'n-700': hexToRgb('#cfd5dc'),
-      'n-750': hexToRgb('#d9dde4'),
-      'n-800': hexToRgb('#e2e6eb'),
-      'n-900': hexToRgb('#eef1f4'),
-      'n-950': hexToRgb('#ffffff'),
+      bg: hexToRgb('#FFFFFF'),
+      fg: hexToRgb('#171717'),
+      ...neutralScale(['#171717', '#262626', '#3A3A3A', '#525252', '#6B6B6B', '#8F8F8F', '#B0B0B0', '#D4D4D4', '#E0E0E0', '#EBEBEB', '#F2F2F2', '#F7F7F7', '#FFFFFF']),
+      surface: hexToRgb('#F7F7F7'),
+      elevated: hexToRgb('#EBEBEB'),
+      line: hexToRgb('#E0E0E0'),
+      'line-strong': hexToRgb('#B0B0B0'),
       ...getStateColorVars('light'),
     },
   },
 }
 
 export const ACCENT_PRESETS: AccentPreset[] = [
-  { name: 'Blanco', hex: '#ffffff' },
-  { name: 'Negro', hex: '#0b0f14' },
-  { name: 'Naranja', hex: '#f97316' },
-  { name: 'Azul', hex: '#3b82f6' },
-  { name: 'Verde', hex: '#22c55e' },
-  { name: 'Morado', hex: '#8b5cf6' },
-  { name: 'Rojo', hex: '#ef4444' },
-  { name: 'Rosa', hex: '#ec4899' },
-  { name: 'Amarillo', hex: '#eab308' },
+  { name: 'Disco de 15 kg', hex: '#F2BF1D', lightHex: '#8A6400' },
+  { name: 'Tiza', hex: '#EFEBE1', lightHex: '#4A463D' },
+  { name: 'Óxido', hex: '#FF7A45', lightHex: '#9C3B10' },
+  { name: 'Disco de 25 kg', hex: '#FF6459', lightHex: '#AE2A20' },
+  { name: 'Magnesio', hex: '#B9E34A', lightHex: '#4F6309' },
+  { name: 'Plataforma', hex: '#7FD4B8', lightHex: '#116A54' },
+  { name: 'Acero', hex: '#9FB3C8', lightHex: '#3C5873' },
+  { name: 'Disco de 20 kg', hex: '#8FB2FF', lightHex: '#2B55C4' },
+  { name: 'Cinta', hex: '#E7A3C8', lightHex: '#9B2C68' },
 ]
 
+/** Un acento guardado se adapta al modo del tema; los colores antiguos fuera de la lista se respetan. */
+export function resolveAccent(hex: string, mode: 'dark' | 'light'): string {
+  const wanted = hex.toLowerCase()
+  const preset = ACCENT_PRESETS.find(
+    (p) => p.hex.toLowerCase() === wanted || p.lightHex.toLowerCase() === wanted
+  )
+  if (!preset) return hex
+  return mode === 'light' ? preset.lightHex : preset.hex
+}
+
 export function getVisiblePresets(themeMode: 'dark' | 'light'): AccentPreset[] {
-  return ACCENT_PRESETS.filter((p) => {
-    if (themeMode === 'light') return p.hex.toLowerCase() !== '#ffffff'
-    return p.hex.toLowerCase() !== '#0b0f14'
-  })
+  return ACCENT_PRESETS.map((p) => ({
+    ...p,
+    hex: themeMode === 'light' ? p.lightHex : p.hex,
+  }))
 }

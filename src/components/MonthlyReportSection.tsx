@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Calendar, Dumbbell, Clock, Weight, Layers } 
 import type { Workout, Exercise } from '../types'
 import { monthlyReport } from '../utils/stats'
 import { ExerciseDemo } from './ExerciseDemo'
+import { formatNumber } from '../utils/format'
 
 export interface MonthlyReportSectionProps {
   workouts: Workout[]
@@ -60,26 +61,26 @@ export function MonthlyReportSection({
   }, [workouts, exercisesById, selectedDate, bodyweightKg])
 
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4 shadow-sm">
+    <div className="space-y-4">
       {/* Cabecera y selector de mes */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-sm font-bold text-white tracking-tight">Informe Mensual</h2>
-          <p className="text-xs text-neutral-400">Balance del mes y ejercicios destacados</p>
+          <h2 className="text-base font-semibold text-white tracking-tight">Informe mensual</h2>
+          <p className="text-[13px] text-neutral-400">Balance y ejercicios destacados del mes</p>
         </div>
 
         {/* Controles de mes */}
-        <div className="flex items-center gap-1.5 bg-neutral-950 px-2 py-1 rounded-xl border border-neutral-800">
+        <div className="flex items-center gap-1 bg-surface px-1 py-0.5 rounded-md border border-line">
           <button
             type="button"
             onClick={() => setSelectedDate((prev) => subMonths(prev, 1))}
-            className="p-1 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
-            title="Mes anterior"
+            className="press min-w-10 min-h-10 flex items-center justify-center text-neutral-400 hover:text-white"
+            aria-label="Mes anterior"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={18} strokeWidth={1.75} />
           </button>
 
-          <span className="text-xs font-semibold text-neutral-200 px-1 min-w-[110px] text-center">
+          <span className="text-xs font-semibold text-neutral-200 px-2 min-w-[110px] text-center">
             {monthLabel}
           </span>
 
@@ -87,97 +88,85 @@ export function MonthlyReportSection({
             type="button"
             onClick={() => setSelectedDate((prev) => addMonths(prev, 1))}
             disabled={isCurrentMonth}
-            className={`p-1 rounded-lg transition ${
+            className={`press min-w-10 min-h-10 flex items-center justify-center ${
               isCurrentMonth
-                ? 'text-neutral-600 cursor-not-allowed'
-                : 'text-neutral-400 hover:text-white hover:bg-neutral-800'
+                ? 'text-neutral-600 cursor-not-allowed opacity-40'
+                : 'text-neutral-400 hover:text-white'
             }`}
-            title="Mes siguiente"
+            aria-label="Mes siguiente"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={18} strokeWidth={1.75} />
           </button>
         </div>
       </div>
 
       {report.workouts === 0 ? (
-        <div className="text-center py-10 text-xs text-neutral-500 bg-neutral-950/40 rounded-xl border border-dashed border-neutral-800">
-          <Calendar size={24} className="mx-auto text-neutral-600 mb-2" />
+        <div className="text-center py-10 text-xs text-neutral-400 bg-surface rounded-lg border border-line">
+          <Calendar size={24} className="mx-auto text-neutral-400 mb-2" strokeWidth={1.75} />
           No hay entrenamientos registrados en {monthLabel}.
         </div>
       ) : (
         <>
-          {/* 4 Métricas del mes */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800">
+          {/* 4 Métricas del mes en estilo KPI grid */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-surface p-3 rounded-lg border border-line">
               <div className="flex items-center justify-between text-neutral-400">
-                <span className="text-[10px] font-semibold uppercase tracking-wider">
-                  Entrenamientos
-                </span>
-                <Dumbbell size={14} className="text-white" />
+                <span className="label-tech">Entrenos</span>
+                <Dumbbell size={14} className="text-neutral-400" strokeWidth={1.75} />
               </div>
-              <div className="mt-1 text-xl font-extrabold text-white">
-                {report.workouts}{' '}
-                <span className="text-xs font-normal text-neutral-400">
-                  {report.workouts === 1 ? 'sesión' : 'sesiones'}
-                </span>
+              <div className="mt-1 text-2xl font-bold text-white num">
+                {report.workouts}
               </div>
             </div>
 
-            <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800">
+            <div className="bg-surface p-3 rounded-lg border border-line">
               <div className="flex items-center justify-between text-neutral-400">
-                <span className="text-[10px] font-semibold uppercase tracking-wider">
-                  Volumen Total
-                </span>
-                <Weight size={14} className="text-white" />
+                <span className="label-tech">Volumen Total</span>
+                <Weight size={14} className="text-neutral-400" strokeWidth={1.75} />
               </div>
-              <div className="mt-1 text-xl font-extrabold text-white">
-                {displayWeight(report.volume, unit).toLocaleString()}{' '}
+              <div className="mt-1 text-2xl font-bold text-white num">
+                {formatNumber(displayWeight(report.volume, unit), 0, 0)}{' '}
                 <span className="text-xs font-normal text-neutral-400">{unit}</span>
               </div>
             </div>
 
-            <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800">
+            <div className="bg-surface p-3 rounded-lg border border-line">
               <div className="flex items-center justify-between text-neutral-400">
-                <span className="text-[10px] font-semibold uppercase tracking-wider">
-                  Series Válidas
-                </span>
-                <Layers size={14} className="text-white" />
+                <span className="label-tech">Series Válidas</span>
+                <Layers size={14} className="text-neutral-400" strokeWidth={1.75} />
               </div>
-              <div className="mt-1 text-xl font-extrabold text-white">
-                {report.sets}{' '}
-                <span className="text-xs font-normal text-neutral-400">series</span>
+              <div className="mt-1 text-2xl font-bold text-white num">
+                {report.sets}
               </div>
             </div>
 
-            <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800">
+            <div className="bg-surface p-3 rounded-lg border border-line">
               <div className="flex items-center justify-between text-neutral-400">
-                <span className="text-[10px] font-semibold uppercase tracking-wider">
-                  Tiempo Total
-                </span>
-                <Clock size={14} className="text-white" />
+                <span className="label-tech">Tiempo Total</span>
+                <Clock size={14} className="text-neutral-400" strokeWidth={1.75} />
               </div>
-              <div className="mt-1 text-xl font-extrabold text-white">
+              <div className="mt-1 text-2xl font-bold text-white num">
                 {formatDurationSec(report.durationSec)}
               </div>
             </div>
           </div>
 
           {/* Top Ejercicios del mes */}
-          <div className="space-y-2 pt-2 border-t border-neutral-800/80">
-            <h3 className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
+          <div className="space-y-2 pt-2">
+            <h3 className="label-tech text-neutral-400">
               Ejercicios más trabajados del mes
             </h3>
 
             {report.top.length === 0 ? (
-              <div className="text-xs text-neutral-500 py-3 text-center">
+              <div className="text-xs text-neutral-400 py-3 text-center bg-surface border border-line rounded-lg">
                 Sin ejercicios registrados en este mes.
               </div>
             ) : (
-              <div className="divide-y divide-neutral-800/80 bg-neutral-950/60 border border-neutral-800 rounded-xl px-3 py-1">
+              <ul className="border-t border-b border-line divide-y divide-line list-none">
                 {report.top.slice(0, 5).map((ex, idx) => (
-                  <div key={ex.exerciseId} className="py-2.5 flex items-center gap-3">
-                    <span className="text-xs font-bold text-neutral-500 w-4 text-center shrink-0">
-                      #{idx + 1}
+                  <li key={ex.exerciseId} className="py-2.5 flex items-center gap-3 min-h-12">
+                    <span className="text-xs font-bold text-neutral-400 w-4 text-center shrink-0 num">
+                      {idx + 1}
                     </span>
 
                     <ExerciseDemo
@@ -190,28 +179,28 @@ export function MonthlyReportSection({
                     <div className="flex-1 min-w-0">
                       <p
                         onClick={onPreviewExercise ? () => onPreviewExercise(ex.exerciseId) : undefined}
-                        className={`text-xs font-semibold text-white truncate ${
-                          onPreviewExercise ? 'cursor-pointer hover:text-neutral-300 transition' : ''
+                        className={`text-[15px] font-medium text-white truncate ${
+                          onPreviewExercise ? 'cursor-pointer hover:text-neutral-300' : ''
                         }`}
                       >
                         {ex.name}
                       </p>
-                      <span className="text-[10px] text-neutral-400 bg-neutral-950 border border-neutral-800 px-1.5 py-0.5 rounded mt-0.5 inline-block">
+                      <span className="label-tech text-neutral-400 block mt-0.5">
                         {ex.muscleGroup}
                       </span>
                     </div>
 
                     <div className="text-right shrink-0">
-                      <p className="text-xs font-bold text-white">
+                      <p className="text-xs font-bold text-white num">
                         {ex.sessions} {ex.sessions === 1 ? 'vez' : 'veces'}
                       </p>
-                      <p className="text-[11px] text-neutral-400">
+                      <p className="text-xs text-neutral-400 num">
                         {ex.sets} {ex.sets === 1 ? 'serie' : 'series'}
                       </p>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
         </>

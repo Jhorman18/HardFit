@@ -1,4 +1,4 @@
-# Kitaeru — Registro de Entrenamiento Personal
+# HardFit — Registro de Entrenamiento Personal
 
 Aplicación **web (PWA)** y **Android (Capacitor)** para llevar el seguimiento de rutinas de fuerza,
 entrenamientos, medidas corporales, estadísticas de progreso y temporizador de descanso.
@@ -18,12 +18,17 @@ Funciona **100% offline-first** (los datos viven en tu dispositivo) con **sincro
 - **Catálogo de +1200 ejercicios** con búsqueda, filtro por grupo muscular y por **equipo (máquina / sin máquina)**,
   instrucciones en español y demostración animada (gif desde CDN).
 - **Ejercicios personalizados**: crea y elimina los tuyos.
+- **Enfoque en prensa de piernas**: cuádriceps, isquiotibiales y glúteo, o pantorrilla, con su demostración e instrucciones.
 - **Mapa muscular anatómico** (frente + espalda) con heatmap propio rojo → naranja → amarillo según carga.
 - **Estadísticas**: resumen y avanzadas — progreso por ejercicio (buscador), distribución por músculo (radar),
   ejercicios principales, mapa corporal por período, informe mensual, récords personales, 1RM estimado, volumen y rachas.
 - **Medidas corporales**: registro manual y gráfica de evolución (peso y otras medidas).
-- **Datos de prueba**: genera/borra ~1 mes de datos de ejemplo para explorar las gráficas.
 - **Exportar datos**: JSON y CSV.
+- **Dos vistas del entreno**: Hoja, con la sesión completa, y Foco, con una sola serie a pantalla completa.
+- **Cada serie es un intento**: siempre ves el número a batir, y tres luces se encienden cuando lo superas.
+- **Discos**: desglose por lado calculado con tu barra de referencia.
+- **Temas y acentos**: Clásico, Carbón y Claro, con nueve acentos.
+- **Unidades kg/lb**: cada peso guarda la unidad con la que se registró y se convierte al mostrarlo.
 - **Sincronización opcional** (Supabase): login por email/contraseña, local-first con resolución de conflictos
   por última-escritura. Sin configurar o sin sesión, la app funciona igual, offline.
 - **Tema oscuro** (negro con texto/íconos blancos), íconos lucide, PWA instalable e icono nativo.
@@ -106,7 +111,7 @@ permitiendo «instalar de orígenes desconocidos».
 - `npm run build` — chequeo de tipos + build de producción a `dist/`.
 - `npm run lint` — Oxlint.
 - `npm run fetch:catalog` — regenera el catálogo de ejercicios (ver créditos).
-- `node scripts/generate-icons.mjs` / `make-official-icon.mjs` — genera íconos PWA/Android con Sharp.
+- `node scripts/generate-logo.mjs` — genera todos los iconos de la PWA y Android, y las pantallas de arranque, desde el logo vectorial.
 
 ---
 

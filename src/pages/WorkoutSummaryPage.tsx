@@ -1,4 +1,3 @@
-import { displayWeight, weightInKg, getLatestBodyweightKg, getEntryWeightUnit, convertSetWeight, inputWeight } from '../utils/weightUnits'
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -9,45 +8,35 @@ import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 import {
-  Trophy,
   Share2,
-  Home,
-  Timer,
-  Weight,
-  Layers,
-  Dumbbell,
-  Sparkles,
+  X,
+  Download,
   AlertCircle,
+  Pencil,
 } from 'lucide-react'
 import { db } from '../db'
-import type { Exercise, WorkoutSetEntry } from '../types'
-import { isValidSet, estimated1RM } from '../utils/stats'
+import type { Exercise } from '../types'
+import {
+  displayWeight,
+  weightInKg,
+  getLatestBodyweightKg,
+} from '../utils/weightUnits'
+import { isValidSet } from '../utils/stats'
 import {
   summarizeWorkout,
   volumeEquivalent,
   getEquivalentArticle,
   type RecordKind,
+  type WorkoutRecord,
 } from '../utils/workoutSummary'
+import { formatNumber, formatWeight, formatClock } from '../utils/format'
+import { ScreenHeader, HeaderIconButton, RecordLights, LogoMark } from '../components/ui'
 
-const RECORD_KIND_LABELS: Record<RecordKind, string> = {
-  weight: 'Mejor peso',
-  e1rm: 'Mejor 1RM',
-  setVolume: 'Mejor volumen',
-  reps: 'Más reps',
-}
-
-function formatDurationHMin(durationMs: number): string {
-  const diffSec = Math.max(0, Math.floor(durationMs / 1000))
-  const hours = Math.floor(diffSec / 3600)
-  const minutes = Math.floor((diffSec % 3600) / 60)
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  }
-  if (minutes > 0) {
-    return `${minutes} min`
-  }
-  const seconds = diffSec % 60
-  return `${seconds} s`
+interface RecordComparison {
+  exerciseName: string
+  prevText: string
+  newText: string
+  kinds: RecordKind[]
 }
 
 export function WorkoutSummaryPage() {
@@ -67,7 +56,6 @@ export function WorkoutSummaryPage() {
   const settings = useLiveQuery(() => db.settings.get('app'), [])
 
   const unit = (settings && 'units' in settings && settings.units) || 'kg'
-
   const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
 
   const exerciseMap = useMemo(() => {
@@ -85,6 +73,55 @@ export function WorkoutSummaryPage() {
     return volumeEquivalent(summary.totalVolumeKg)
   }, [summary])
 
+  // Calcular filas anterior → nuevo para cada récord
+  const recordComparisons = useMemo<RecordComparison[]>(() => {
+    if (!workout || !allWorkouts || !summary) return []
+
+    const previousWorkouts = allWorkouts.filter(
+      (w) => w.finishedAt != null && w.id !== workout.id && w.startedAt < workout.startedAt
+    )
+
+    return summary.records.map((rec: WorkoutRecord) => {
+      const ex = exerciseMap.get(rec.exerciseId)
+      const exName = ex?.name || 'Ejercicio'
+      const newW = rec.weight !== undefined ? displayWeight(rec.weight, unit) : 0
+      const newR = rec.reps ?? 0
+      const newText = `${formatWeight(newW)} ${unit} × ${newR}`
+
+      // Buscar mejor marca previa de este ejercicio
+      let prevBestWeight = 0
+      let prevBestReps = 0
+
+      for (const pw of previousWorkouts) {
+        if (!pw.entries) continue
+        for (const entry of pw.entries) {
+          if (entry.exerciseId !== rec.exerciseId || !entry.sets) continue
+          for (const s of entry.sets) {
+            if (!isValidSet(s)) continue
+            const w = displayWeight(weightInKg(s), unit)
+            const r = s.reps || 0
+            if (w > prevBestWeight || (w === prevBestWeight && r > prevBestReps)) {
+              prevBestWeight = w
+              prevBestReps = r
+            }
+          }
+        }
+      }
+
+      const prevText =
+        prevBestWeight > 0
+          ? `${formatWeight(prevBestWeight)} ${unit} × ${prevBestReps}`
+          : '—'
+
+      return {
+        exerciseName: exName,
+        prevText,
+        newText,
+        kinds: rec.kinds,
+      }
+    })
+  }, [workout, allWorkouts, summary, exerciseMap, unit])
+
   const handleShare = async () => {
     if (isGenerating || !workout) return
     setIsGenerating(true)
@@ -98,12 +135,12 @@ export function WorkoutSummaryPage() {
 
       const dataUrl = await toPng(cardNode, {
         pixelRatio: 2,
-        backgroundColor: '#0a0a0a',
+        backgroundColor: '#121210',
         cacheBust: true,
       })
 
       const dateStr = format(new Date(workout.finishedAt || workout.startedAt), 'yyyy-MM-dd')
-      const fileName = `kitaeru-entreno-${dateStr}.png`
+      const fileName = `hardfit-entreno-${dateStr}.png`
 
       if (Capacitor.isNativePlatform()) {
         const base64Data = dataUrl.includes(',') ? dataUrl.split(',')[1] : dataUrl
@@ -142,7 +179,6 @@ export function WorkoutSummaryPage() {
           }
         }
 
-        // Descarga tradicional en navegador
         const a = document.createElement('a')
         a.href = dataUrl
         a.download = fileName
@@ -158,29 +194,25 @@ export function WorkoutSummaryPage() {
     }
   }
 
-  // 1. Estado de carga de la base de datos
   if (workout === undefined || summary === null) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-neutral-400">Cargando resumen del entreno…</p>
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <p className="text-sm text-neutral-400">Cargando resumen del entreno…</p>
       </div>
     )
   }
 
-  // 2. Si no existe el entrenamiento
   if (workout === null) {
     return (
-      <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center space-y-4">
-        <Dumbbell size={36} className="text-neutral-600" />
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
         <h2 className="text-base font-bold text-white">No encontramos este entreno</h2>
-        <p className="text-xs text-neutral-400 max-w-xs">
+        <p className="text-sm text-neutral-400 max-w-xs">
           Es posible que el entrenamiento haya sido eliminado o el enlace no sea válido.
         </p>
         <button
           type="button"
           onClick={() => navigate('/history')}
-          className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-xl text-xs font-semibold transition"
+          className="btn-secondary"
         >
           Ir al historial
         </button>
@@ -189,255 +221,228 @@ export function WorkoutSummaryPage() {
   }
 
   const workoutDate = new Date(workout.finishedAt || workout.startedAt)
-  const rawDateStr = format(workoutDate, "EEEE, d 'de' MMMM yyyy", { locale: es })
+  const rawDateStr = format(workoutDate, "EEEE, d 'de' MMMM · HH:mm", { locale: es })
   const formattedDate = rawDateStr.charAt(0).toUpperCase() + rawDateStr.slice(1)
-
-  // Equivalencia
-  const eqHeadline = equivalent
-    ? equivalent.count >= 2
-      ? `Levantaste el peso de ${equivalent.count} ${equivalent.plural}`
-      : `Levantaste el peso de ${getEquivalentArticle(equivalent.name)} ${equivalent.name}`
-    : ''
-
-  const objWeightFormatted = equivalent
-    ? unit === 'lb'
-      ? Math.round(equivalent.weightKg * 2.20462).toLocaleString('es-ES')
-      : equivalent.weightKg.toLocaleString('es-ES')
-    : ''
-
-  const totalVolFormatted = displayWeight(summary.totalVolumeKg, unit).toLocaleString('es-ES')
-
-  const eqSubtitle = equivalent
-    ? `Volumen total: ${totalVolFormatted} ${unit} · ${getEquivalentArticle(equivalent.name)} ${equivalent.name} pesa ~${objWeightFormatted} ${unit}`
-    : ''
+  const durationSeconds = Math.max(0, Math.floor(summary.durationMs / 1000))
+  const displayTotalVol = displayWeight(summary.totalVolumeKg, unit)
 
   return (
-    <div className="max-w-xl mx-auto p-4 space-y-4">
-      {/* TARJETA DE RESUMEN (capturada por html-to-image) */}
-      <div
-        id="workout-summary-card"
-        className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 space-y-5 shadow-sm text-left"
-      >
-        {/* Encabezado */}
-        <div className="space-y-1 border-b border-neutral-800/80 pb-4">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-bold uppercase tracking-wider mb-1">
-            <Sparkles size={12} />
-            <span>¡Entreno terminado!</span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            {workout.name || 'Entrenamiento'}
-          </h1>
-          <p className="text-xs text-neutral-400">{formattedDate}</p>
-        </div>
+    <div className="flex-1 flex flex-col bg-black">
+      <ScreenHeader
+        title="Resumen"
+        leading={
+          <HeaderIconButton label="Cerrar" onClick={() => navigate('/')}>
+            <X size={20} strokeWidth={1.75} />
+          </HeaderIconButton>
+        }
+        actions={
+          <HeaderIconButton
+            label="Compartir tarjeta del entreno"
+            onClick={handleShare}
+          >
+            <Share2 size={20} strokeWidth={1.75} />
+          </HeaderIconButton>
+        }
+      />
 
-        {/* 4 Métricas en Grid 2x2 */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800">
-            <div className="flex items-center justify-between text-neutral-400">
-              <span className="text-[10px] font-semibold uppercase tracking-wider">Duración</span>
-              <Timer size={14} className="text-neutral-400" />
-            </div>
-            <div className="mt-1 text-xl font-extrabold text-white">
-              {formatDurationHMin(summary.durationMs)}
-            </div>
-          </div>
+      <div className="flex-1 overflow-y-auto">
+        {/* Estadísticas dominantes (Hero) */}
+        <section className="p-6 bg-surface border-b border-line text-center space-y-4">
+          <h2 className="text-2xl font-bold text-white truncate">{workout.name || 'Entrenamiento'}</h2>
+          <p className="text-sm text-neutral-400 -mt-2">{formattedDate}</p>
 
-          <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800">
-            <div className="flex items-center justify-between text-neutral-400">
-              <span className="text-[10px] font-semibold uppercase tracking-wider">Volumen</span>
-              <Weight size={14} className="text-neutral-400" />
-            </div>
-            <div className="mt-1 text-xl font-extrabold text-white">
-              {displayWeight(summary.totalVolumeKg, unit).toLocaleString()}{' '}
-              <span className="text-xs font-normal text-neutral-400">{unit}</span>
+          <div className="flex flex-col items-center pt-2">
+            <span className="label-tech">Volumen total</span>
+            <div className="flex items-baseline justify-center gap-1.5 mt-1">
+              <span className="num text-5xl font-bold text-white leading-none">
+                {formatNumber(displayTotalVol)}
+              </span>
+              <span className="text-xl font-semibold text-neutral-400">{unit}</span>
             </div>
           </div>
 
-          <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800">
-            <div className="flex items-center justify-between text-neutral-400">
-              <span className="text-[10px] font-semibold uppercase tracking-wider">Series</span>
-              <Layers size={14} className="text-neutral-400" />
+          <dl className="grid grid-cols-3 gap-2 p-3 bg-elevated border border-line rounded-md text-center">
+            <div className="flex flex-col items-center">
+              <dt className="label-tech">Duración</dt>
+              <dd className="num text-xl text-white mt-1">{formatClock(durationSeconds)}</dd>
             </div>
-            <div className="mt-1 text-xl font-extrabold text-white">
-              {summary.validSets}
+            <div className="flex flex-col items-center border-l border-r border-line px-1">
+              <dt className="label-tech">Series</dt>
+              <dd className="num text-xl text-white mt-1">{summary.validSets}</dd>
             </div>
-          </div>
+            <div className="flex flex-col items-center">
+              <dt className="label-tech">Récords</dt>
+              <dd className="flex items-center gap-1.5 mt-1">
+                <span className="num text-xl text-white">{summary.records.length}</span>
+                <RecordLights lit={summary.records.length > 0} size={5} />
+              </dd>
+            </div>
+          </dl>
 
-          <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800">
-            <div className="flex items-center justify-between text-neutral-400">
-              <span className="text-[10px] font-semibold uppercase tracking-wider">Ejercicios</span>
-              <Dumbbell size={14} className="text-neutral-400" />
+          {equivalent && (
+            <div className="p-3 bg-elevated border border-line rounded-md text-left flex items-center gap-3">
+              <span className="text-3xl select-none" aria-hidden="true">{equivalent.emoji}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white leading-snug">
+                  Levantaste el peso de {equivalent.count >= 2 ? `${equivalent.count} ${equivalent.plural}` : `${getEquivalentArticle(equivalent.name)} ${equivalent.name}`}
+                </p>
+                <p className="text-xs text-neutral-400 mt-0.5">
+                  Cada {equivalent.name} pesa ~{formatNumber(displayWeight(equivalent.weightKg, unit))} {unit}
+                </p>
+              </div>
             </div>
-            <div className="mt-1 text-xl font-extrabold text-white">
-              {summary.exerciseCount}
+          )}
+        </section>
+
+        <div className="p-4 space-y-6">
+          {/* Récords batidos */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="section-title">Récords batidos</h3>
+              <span className="label-tech">{summary.records.length} en total</span>
             </div>
-          </div>
-        </div>
 
-        {/* Tarjeta de Equivalencia (si no es null) */}
-        {equivalent && (
-          <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 flex items-center gap-3.5">
-            <div className="text-4xl shrink-0 select-none">{equivalent.emoji}</div>
-            <div className="min-w-0">
-              <p className="text-sm font-bold text-white leading-snug">{eqHeadline}</p>
-              <p className="text-[11px] text-neutral-400 mt-0.5">{eqSubtitle}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Récords */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-neutral-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Trophy size={14} className="text-amber-400" />
-              <span>Récords ({summary.records.length})</span>
-            </h2>
-          </div>
-
-          {summary.records.length === 0 ? (
-            <div className="p-4 bg-neutral-950 rounded-xl border border-dashed border-neutral-800 text-center text-xs text-neutral-400">
-              Sin récords esta vez. ¡A por ellos en el próximo!
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {summary.records.map((rec) => {
-                const ex = exerciseMap.get(rec.exerciseId)
-                const exName = ex?.name || rec.exerciseId
-                const weightStr =
-                  rec.weight !== undefined && rec.weight !== null
-                    ? `${displayWeight(rec.weight, unit)} ${unit}`
-                    : `0 ${unit}`
-                const repsStr = `${rec.reps ?? 0} reps`
-
-                return (
+            {recordComparisons.length === 0 ? (
+              <div className="p-4 bg-surface border border-line rounded-md text-center text-sm text-neutral-400">
+                Sin récords esta vez. La próxima sesión será tu oportunidad de batir marcas.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recordComparisons.map((item, idx) => (
                   <div
-                    key={`${rec.exerciseId}-${rec.setIndex}`}
-                    className="p-3 bg-neutral-950 rounded-xl border border-neutral-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                    key={`${item.exerciseName}-${idx}`}
+                    className="flex items-center justify-between gap-3 p-3.5 bg-surface border border-line rounded-md"
                   >
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white truncate">{exName}</p>
-                      <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
-                        {weightStr} × {repsStr}
-                      </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <RecordLights lit={true} size={5} />
+                      <span className="text-sm font-semibold text-white truncate">
+                        {item.exerciseName}
+                      </span>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5 shrink-0">
-                      {rec.kinds.map((kind) => (
-                        <span
-                          key={kind}
-                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full"
-                        >
-                          <Trophy size={11} className="text-amber-400" />
-                          <span>{RECORD_KIND_LABELS[kind]}</span>
-                        </span>
+                    <div className="flex items-center gap-2 shrink-0 text-sm">
+                      <span className="num text-neutral-400">{item.prevText}</span>
+                      <span className="text-neutral-400">→</span>
+                      <span className="num text-white font-bold">{item.newText}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Tarjeta para compartir */}
+          <section className="space-y-3">
+            <h3 className="section-title">Compartir</h3>
+
+            <div className="flex flex-col gap-3">
+              <div
+                id="workout-summary-card"
+                className="w-full max-w-sm mx-auto bg-surface border border-line-strong rounded-lg p-5 space-y-4"
+              >
+                <div className="flex items-center justify-between border-b border-line pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-accent" aria-hidden="true">
+                      <LogoMark size={24} />
+                    </span>
+                    <span className="text-lg font-bold text-white tracking-tight">HardFit</span>
+                  </div>
+                  <span className="label-tech">Registro local</span>
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-2xl font-bold text-white leading-tight truncate">
+                    {workout.name || 'Entrenamiento'}
+                  </h4>
+                  <p className="text-sm text-neutral-400">{formattedDate}</p>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-line text-center">
+                  <div>
+                    <span className="label-tech block">Duración</span>
+                    <span className="num text-xl font-bold text-white mt-0.5 block">
+                      {formatClock(durationSeconds)}
+                    </span>
+                  </div>
+                  <div className="border-l border-r border-line">
+                    <span className="label-tech block">{unit.toUpperCase()}</span>
+                    <span className="num text-xl font-bold text-white mt-0.5 block">
+                      {formatNumber(displayTotalVol)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="label-tech block">Series</span>
+                    <span className="num text-xl font-bold text-white mt-0.5 block">
+                      {summary.validSets}
+                    </span>
+                  </div>
+                </div>
+
+                {recordComparisons.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <RecordLights lit={true} size={6} />
+                      <span className="text-sm font-semibold text-white">
+                        {recordComparisons.length} {recordComparisons.length === 1 ? 'récord' : 'récords'}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {recordComparisons.slice(0, 3).map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-xs py-1">
+                          <span className="text-neutral-300 truncate pr-2">{item.exerciseName}</span>
+                          <span className="num text-white font-bold shrink-0">{item.newText}</span>
+                        </div>
                       ))}
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
+                )}
 
-        {/* Lista compacta de ejercicios */}
-        <div className="space-y-2.5">
-          <h2 className="text-xs font-bold text-neutral-300 uppercase tracking-wider">
-            Ejercicios ({summary.exerciseCount})
-          </h2>
-
-          <div className="space-y-2">
-            {(workout.entries || []).map((entry, idx) => {
-              const unit = getEntryWeightUnit(workout, entry)
-              const validSets = (entry.sets || []).filter(isValidSet)
-              if (validSets.length === 0) return null
-
-              const ex = exerciseMap.get(entry.exerciseId)
-              const exName = ex?.name || entry.exerciseId
-
-              // Mejor serie según 1RM estimado o mayor peso
-              let bestSet: WorkoutSetEntry | null = null
-              let bestScore = -1
-
-              for (const s of validSets) {
-                const w = weightInKg(s)
-                const r = s.reps || 0
-                const score = estimated1RM(w, r)
-                if (score > bestScore) {
-                  bestScore = score
-                  bestSet = s
-                }
-              }
-
-              const bestWeightStr =
-                bestSet && bestSet.weight !== undefined && bestSet.weight !== null
-                  ? `${inputWeight(convertSetWeight(bestSet, unit).weight)} ${unit}`
-                  : `0 ${unit}`
-
-              return (
-                <div
-                  key={`${entry.exerciseId}-${idx}`}
-                  className="p-3 bg-neutral-950 rounded-xl border border-neutral-800/80 flex items-center justify-between gap-2 text-xs"
-                >
-                  <div className="min-w-0 pr-2">
-                    <p className="font-semibold text-white truncate">{exName}</p>
-                    <p className="text-[11px] text-neutral-400">
-                      {validSets.length} {validSets.length === 1 ? 'serie válida' : 'series válidas'}
-                    </p>
-                  </div>
-
-                  <div className="text-right shrink-0 font-mono text-[11px] text-neutral-300">
-                    {bestSet ? (
-                      <>
-                        <span className="text-neutral-500 text-[10px] block">Mejor serie</span>
-                        <strong className="text-white font-bold">
-                          {bestWeightStr} × {bestSet.reps ?? 0}
-                        </strong>
-                      </>
-                    ) : (
-                      '-'
-                    )}
-                  </div>
+                <div className="pt-2 border-t border-line text-center">
+                  <span className="text-xs text-neutral-400 font-medium">
+                    Cada serie es un intento
+                  </span>
                 </div>
-              )
-            })}
+              </div>
+
+              {shareError && (
+                <div className="p-3 bg-elevated border border-line rounded-md flex items-center gap-2 text-xs text-neutral-300">
+                  <AlertCircle size={16} className="text-neutral-400 shrink-0" />
+                  <span>{shareError}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleShare}
+                disabled={isGenerating}
+                className="btn-primary w-full"
+              >
+                <Download size={18} />
+                <span>{isGenerating ? 'Generando imagen…' : 'Descargar imagen'}</span>
+              </button>
+            </div>
+          </section>
+
+          {/* Acciones finales */}
+          <div className="space-y-3 pt-2">
+            <button
+              type="button"
+              onClick={() => navigate(`/history/${workout.id}`)}
+              className="btn-secondary w-full"
+            >
+              <Pencil size={16} />
+              <span>Editar entreno</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="btn-primary w-full"
+            >
+              Finalizar
+            </button>
           </div>
         </div>
-
-        {/* Firma discreta en la tarjeta para compartir */}
-        <div className="pt-2 border-t border-neutral-800/60 flex items-center justify-between text-[10px] text-neutral-500">
-          <span>Kitaeru · Registro de entrenamiento</span>
-          <span>kitaeru.app</span>
-        </div>
-      </div>
-
-      {/* Alerta de error si falla compartir */}
-      {shareError && (
-        <div className="p-3 bg-red-950/40 border border-red-900/50 rounded-xl flex items-center gap-2 text-xs text-red-300">
-          <AlertCircle size={15} className="text-red-400 shrink-0" />
-          <span>{shareError}</span>
-        </div>
-      )}
-
-      {/* BOTONES (fuera de la tarjeta que se comparte) */}
-      <div className="space-y-2 pt-2">
-        <button
-          type="button"
-          onClick={handleShare}
-          disabled={isGenerating}
-          className="w-full py-3.5 px-4 bg-white text-black font-bold text-xs rounded-xl hover:bg-neutral-200 active:bg-neutral-300 transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          <Share2 size={15} />
-          <span>{isGenerating ? 'Generando...' : 'Compartir'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="w-full py-3.5 px-4 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 text-white font-semibold text-xs rounded-xl border border-neutral-800 transition flex items-center justify-center gap-2"
-        >
-          <Home size={15} />
-          <span>Ir al inicio</span>
-        </button>
       </div>
     </div>
   )

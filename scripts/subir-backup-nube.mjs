@@ -1,4 +1,4 @@
-// Sube una copia de Kitaeru (JSON exportado o generado) a la nube de una cuenta,
+// Sube una copia de HardFit (JSON exportado o generado) a la nube de una cuenta,
 // igual que lo haría el botón "Sincronizar" de la app. Después basta con iniciar
 // sesión en la app para que todo se descargue.
 //
@@ -29,8 +29,8 @@ if (!url || !anonKey) {
 }
 
 const backup = JSON.parse(fs.readFileSync(file, 'utf8'))
-if (!['Kitaeru', 'RepLog'].includes(backup.app) || !backup.data) {
-  console.error('El archivo no es una copia de Kitaeru')
+if (!['HardFit', 'hardFIT', 'Kitaeru', 'RepLog'].includes(backup.app) || !backup.data) {
+  console.error('El archivo no es una copia de HardFit')
   process.exit(1)
 }
 

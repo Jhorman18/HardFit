@@ -30,21 +30,23 @@ export function TopExercisesSection({ workouts, exercisesById, onPreviewExercise
     return all.slice(0, 10)
   }, [workouts, exercisesById, period, now])
 
+  const maxSets = topList.length > 0 ? topList[0].sets : 1
+
   return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 space-y-4 shadow-sm">
+    <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-sm font-bold text-white tracking-tight">Ejercicios Principales</h2>
-          <p className="text-xs text-neutral-400">Top 10 más frecuentes por sesiones y series</p>
+          <h2 className="text-base font-semibold text-white tracking-tight">Ejercicios principales</h2>
+          <p className="text-[13px] text-neutral-400">Por sesiones y series en el período</p>
         </div>
 
         {/* Selector de período */}
-        <div className="flex items-center gap-1 bg-neutral-950 p-1 rounded-xl border border-neutral-800">
+        <div className="inline-flex border border-line-strong rounded-sm overflow-hidden">
           <button
             type="button"
             onClick={() => setPeriod('7d')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
-              period === '7d' ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+            className={`min-h-12 px-3 text-xs font-semibold uppercase tracking-wider transition ${
+              period === '7d' ? 'bg-accent text-on-accent' : 'bg-transparent text-neutral-300'
             }`}
           >
             7 días
@@ -52,8 +54,8 @@ export function TopExercisesSection({ workouts, exercisesById, onPreviewExercise
           <button
             type="button"
             onClick={() => setPeriod('30d')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
-              period === '30d' ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+            className={`min-h-12 px-3 text-xs font-semibold uppercase tracking-wider transition ${
+              period === '30d' ? 'bg-accent text-on-accent' : 'bg-transparent text-neutral-300'
             }`}
           >
             30 días
@@ -61,8 +63,8 @@ export function TopExercisesSection({ workouts, exercisesById, onPreviewExercise
           <button
             type="button"
             onClick={() => setPeriod('all')}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition ${
-              period === 'all' ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+            className={`min-h-12 px-3 text-xs font-semibold uppercase tracking-wider transition ${
+              period === 'all' ? 'bg-accent text-on-accent' : 'bg-transparent text-neutral-300'
             }`}
           >
             Todo
@@ -71,50 +73,58 @@ export function TopExercisesSection({ workouts, exercisesById, onPreviewExercise
       </div>
 
       {topList.length === 0 ? (
-        <div className="text-center py-8 text-xs text-neutral-500 bg-neutral-950/40 rounded-xl border border-dashed border-neutral-800">
-          <Dumbbell size={24} className="mx-auto text-neutral-600 mb-2" />
+        <div className="text-center py-8 text-xs text-neutral-400 bg-surface rounded-lg border border-line">
+          <Dumbbell size={24} className="mx-auto text-neutral-400 mb-2" strokeWidth={1.75} />
           No hay ejercicios registrados en el período seleccionado.
         </div>
       ) : (
-        <div className="divide-y divide-neutral-800/80">
-          {topList.map((item, index) => (
-            <div key={item.exerciseId} className="py-2.5 first:pt-0 last:pb-0 flex items-center gap-3">
-              <span className="text-xs font-bold text-neutral-500 w-4 text-center shrink-0">
-                {index + 1}
-              </span>
+        <ul className="border-t border-b border-line divide-y divide-line list-none">
+          {topList.map((item, index) => {
+            const pct = Math.max(8, Math.round((item.sets / maxSets) * 100))
 
-              <ExerciseDemo
-                exerciseId={item.exerciseId}
-                variant="thumb"
-                className="w-11 h-11 shrink-0"
-                onClick={onPreviewExercise ? () => onPreviewExercise(item.exerciseId) : undefined}
-              />
-
-              <div className="flex-1 min-w-0">
-                <p
-                  onClick={onPreviewExercise ? () => onPreviewExercise(item.exerciseId) : undefined}
-                  className={`text-xs font-semibold text-white truncate ${
-                    onPreviewExercise ? 'cursor-pointer hover:text-neutral-300 transition' : ''
-                  }`}
-                >
-                  {item.name}
-                </p>
-                <span className="text-[10px] text-neutral-400 bg-neutral-950 border border-neutral-800 px-1.5 py-0.5 rounded mt-0.5 inline-block">
-                  {item.muscleGroup}
+            return (
+              <li
+                key={item.exerciseId}
+                className="py-2.5 flex items-center gap-3 min-h-12"
+              >
+                <span className="text-xs font-bold text-neutral-400 w-4 text-center shrink-0 num">
+                  {index + 1}
                 </span>
-              </div>
 
-              <div className="text-right shrink-0">
-                <p className="text-xs font-bold text-white">
-                  {item.sessions} {item.sessions === 1 ? 'vez' : 'veces'}
-                </p>
-                <p className="text-[11px] text-neutral-400">
-                  {item.sets} {item.sets === 1 ? 'serie' : 'series'}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+                <ExerciseDemo
+                  exerciseId={item.exerciseId}
+                  variant="thumb"
+                  className="w-10 h-10 shrink-0"
+                  onClick={onPreviewExercise ? () => onPreviewExercise(item.exerciseId) : undefined}
+                />
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p
+                      onClick={onPreviewExercise ? () => onPreviewExercise(item.exerciseId) : undefined}
+                      className={`text-[15px] font-medium text-white truncate ${
+                        onPreviewExercise ? 'cursor-pointer hover:text-neutral-300' : ''
+                      }`}
+                    >
+                      {item.name}
+                    </p>
+                    <span className="text-xs text-neutral-300 shrink-0 num">
+                      {item.sets} {item.sets === 1 ? 'serie' : 'series'}
+                    </span>
+                  </div>
+
+                  {/* Barra proporcional en escala neutra */}
+                  <div className="h-1.5 w-full bg-elevated rounded-sm overflow-hidden mt-1.5">
+                    <div
+                      className="h-full bg-neutral-600 rounded-sm"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
       )}
     </div>
   )

@@ -1,21 +1,30 @@
-import { ExerciseFocusSelector } from './ExerciseFocusSelector'
-import { getExerciseFocusDefinition, getExerciseFocusInstructions } from '../data/exerciseFocus'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { X, Plus, ArrowLeft } from 'lucide-react'
+import { X, Plus, Trash2 } from 'lucide-react'
 import { db } from '../db'
 import { ExerciseDemo } from './ExerciseDemo'
 import { BodyMuscleChart } from './BodyMuscleChart'
 import { MuscleToggleList } from './MuscleToggleList'
+import { ExerciseFocusSelector } from './ExerciseFocusSelector'
+import { ExerciseHistoryTab } from './ExerciseHistoryTab'
+import { ExerciseNotesTab } from './ExerciseNotesTab'
+import { SegTabs } from './ui/SegTabs'
+import { Sheet } from './ui/Sheet'
 import { exerciseMedia } from '../data/exerciseMedia'
 import { getEffectiveMedia } from '../utils/effectiveMuscles'
+import { getExerciseFocusDefinition, getExerciseFocusInstructions } from '../data/exerciseFocus'
+import { getLatestBodyweightKg } from '../utils/weightUnits'
 import type { ExerciseType } from '../types'
 
 export interface ExercisePreviewModalProps {
   exerciseId: string
   onClose: () => void
-  onAdd: (exerciseId: string) => void
+  onAdd?: (exerciseId: string) => void
+  onDeleteCustom?: (exerciseId: string) => void
 }
+
+type PreviewTab = 'como' | 'historial' | 'musculos' | 'notas'
 
 function formatExerciseType(type: ExerciseType): string {
   switch (type) {
@@ -38,8 +47,16 @@ export function ExercisePreviewModal({
   exerciseId,
   onClose,
   onAdd,
+  onDeleteCustom,
 }: ExercisePreviewModalProps) {
+  const [activeTab, setActiveTab] = useState<PreviewTab>('como')
   const [instructionsMap, setInstructionsMap] = useState<Record<string, string[]> | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!instructionsMap) {
@@ -49,198 +66,255 @@ export function ExercisePreviewModal({
     }
   }, [instructionsMap])
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCloseRef.current()
+    }
+    document.addEventListener('keydown', onKey)
+    const overflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = overflow
+    }
+  }, [])
+
   const exercise = useLiveQuery(() => db.exercises.get(exerciseId), [exerciseId])
   const override = useLiveQuery(() => db.muscleOverrides.get(exerciseId), [exerciseId])
+  const workouts = useLiveQuery(() => db.workouts.toArray(), [])
+  const measurements = useLiveQuery(() => db.measurements.toArray(), [])
+  const settings = useLiveQuery(() => db.settings.get('app'), [])
+  const unit = (settings && 'units' in settings && settings.units) || 'kg'
+
+  const latestBodyweight = useMemo(() => getLatestBodyweightKg(measurements), [measurements])
 
   const hasBaseMedia = Boolean(exerciseMedia[exerciseId])
   const effectiveMedia = useMemo(() => {
     return getEffectiveMedia(exerciseId, override)
   }, [exerciseId, override])
 
-  const instructions = getExerciseFocusInstructions(exerciseId, override?.focus) ?? instructionsMap?.[exerciseId]
+  const instructions =
+    getExerciseFocusInstructions(exerciseId, override?.focus) ?? instructionsMap?.[exerciseId]
 
-  return (
-    <div
-      className="fixed inset-0 z-[60] bg-black/85 backdrop-blur-sm flex justify-center p-0 sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="preview-title"
-    >
-      <div className="w-full max-w-md h-full sm:h-[90vh] flex flex-col bg-black sm:bg-neutral-900 sm:border border-neutral-800 sm:rounded-2xl shadow-2xl overflow-hidden">
+  const isLegPressFocus = Boolean(getExerciseFocusDefinition(exerciseId))
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const handleDelete = async () => {
+    if (!exercise || !exercise.isCustom) return
+    try {
+      await db.exercises.delete(exercise.id)
+      onDeleteCustom?.(exercise.id)
+      onClose()
+    } catch (err) {
+      console.error('Error al eliminar ejercicio personalizado:', err)
+    }
+  }
+
+  const tabOptions: { value: PreviewTab; label: string }[] = [
+    { value: 'como', label: 'Cómo' },
+    { value: 'historial', label: 'Historial' },
+    { value: 'musculos', label: 'Músculos' },
+    { value: 'notas', label: 'Notas' },
+  ]
+
+  return createPortal(
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+      <div
+        className="absolute inset-0 bg-neutral-950/70"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="preview-title"
+        tabIndex={-1}
+        className="relative w-full max-w-md max-h-[90dvh] flex flex-col bg-surface border-t sm:border border-line-strong rounded-t-lg sm:rounded-lg outline-none pb-[env(safe-area-inset-bottom)]"
+      >
         {/* Cabecera */}
-        <div className="p-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-900/90 shrink-0 gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition shrink-0 sm:hidden"
-              aria-label="Volver"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div className="min-w-0">
-              <h2 id="preview-title" className="text-base font-bold text-white leading-snug truncate">
-                {exercise?.name ?? 'Detalle del ejercicio'}
-              </h2>
-              {exercise && (
-                <p className="text-xs text-neutral-400 truncate mt-0.5">
-                  {exercise.muscleGroup} • {exercise.equipment} • {formatExerciseType(exercise.type)}
-                </p>
-              )}
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white flex items-center justify-center transition shrink-0"
-            aria-label="Cerrar vista previa"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {/* Contenido scrolleable */}
-        <div className="p-4 space-y-4 overflow-y-auto flex-1">
-          <ExerciseFocusSelector exerciseId={exerciseId} />
-          {/* GIF grande */}
-          <div className="flex justify-center">
-            <ExerciseDemo
-              exerciseId={exerciseId}
-              gifUrl={effectiveMedia.gifUrl}
-              variant="full"
-              alt={exercise?.name || 'Demostración del ejercicio'}
-            />
-          </div>
-
-          {/* Metadatos principales */}
-          {exercise && (
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">
-                  Grupo
-                </span>
-                <span className="font-semibold text-white truncate block">
-                  {exercise.muscleGroup}
-                </span>
-              </div>
-              <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">
-                  Equipo
-                </span>
-                <span className="font-semibold text-white truncate block">
-                  {exercise.equipment}
-                </span>
-              </div>
-              <div className="bg-neutral-950 p-2.5 rounded-xl border border-neutral-800">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-0.5">
-                  Tipo
-                </span>
-                <span className="font-semibold text-white truncate block">
-                  {formatExerciseType(exercise.type)}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Instrucciones de técnica */}
-          <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 space-y-2">
-            <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider block">
-              Instrucciones
-            </span>
-            {instructions && instructions.length > 0 ? (
-              <ol className="space-y-1.5 text-xs text-neutral-300 list-decimal list-inside leading-relaxed">
-                {instructions.map((step, idx) => (
-                  <li key={idx} className="text-neutral-300">
-                    <span className="text-neutral-200">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="text-xs text-neutral-400">Sin instrucciones</p>
+        <div className="flex items-center gap-2 pl-4 pr-1 pt-2 pb-1 shrink-0 border-b border-line">
+          <div className="flex-1 min-w-0 py-1">
+            <h2 id="preview-title" className="text-[17px] font-semibold leading-tight text-white truncate">
+              {exercise?.name ?? 'Detalle del ejercicio'}
+            </h2>
+            {exercise && (
+              <p className="mt-0.5 text-xs text-neutral-400 truncate">
+                {exercise.muscleGroup} · {exercise.equipment} · {formatExerciseType(exercise.type)}
+              </p>
             )}
           </div>
+          <button
+            type="button"
+            aria-label="Cerrar vista previa"
+            onClick={onClose}
+            className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-300 active:text-white shrink-0"
+          >
+            <X size={22} strokeWidth={1.75} />
+          </button>
+        </div>
 
-          {/* Mapa muscular anatómico interactivo */}
-          {hasBaseMedia && effectiveMedia ? (
-            <div className="bg-neutral-950 p-3.5 rounded-xl border border-neutral-800 space-y-3">
-              <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
-                <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-                  Mapa Muscular
-                </span>
-                <div className="flex items-center gap-3 text-[10px]">
-                  {effectiveMedia.primary.length > 0 && (
-                    <span className="flex items-center gap-1.5 text-neutral-300">
-                      <span className="w-2 h-2 rounded-full bg-[#dc2626] inline-block" />
-                      Primario
-                    </span>
-                  )}
-                  {effectiveMedia.secondary.length > 0 && (
-                    <span className="flex items-center gap-1.5 text-neutral-400">
-                      <span className="w-2 h-2 rounded-full bg-[#f97316] inline-block" />
-                      Secundario
-                    </span>
-                  )}
+        {/* Pestañas de navegación */}
+        <SegTabs
+          value={activeTab}
+          options={tabOptions}
+          onChange={(tab) => setActiveTab(tab)}
+          label="Secciones del ejercicio"
+        />
+
+        {/* Contenido scrolleable */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4">
+          {/* Pestaña: Cómo / Resumen */}
+          {activeTab === 'como' && (
+            <div className="space-y-4">
+              {/* Enfoque de prensa si aplica */}
+              {isLegPressFocus && (
+                <div className="p-3 bg-surface-elevated border border-line rounded-md">
+                  <ExerciseFocusSelector exerciseId={exerciseId} />
                 </div>
+              )}
+
+              {/* Demostración visual */}
+              <div className="flex justify-center">
+                <ExerciseDemo
+                  exerciseId={exerciseId}
+                  gifUrl={effectiveMedia.gifUrl}
+                  variant="full"
+                  alt={exercise?.name || 'Demostración'}
+                />
               </div>
 
-              <BodyMuscleChart
-                primary={effectiveMedia.primary}
-                secondary={effectiveMedia.secondary}
-                size="lg"
-              />
-
-              <div className="space-y-1 pt-1 text-xs border-t border-neutral-800/60">
-                {effectiveMedia.primaryEs.length > 0 ? (
-                  <div className="leading-snug">
-                    <span className="font-semibold text-white">Músculos: </span>
-                    <span className="text-neutral-200">
-                      {effectiveMedia.primaryEs.join(', ')}
-                    </span>
-                  </div>
+              {/* Instrucciones de técnica */}
+              <div className="space-y-2">
+                <span className="label-tech block text-neutral-400">
+                  Instrucciones técnicas
+                </span>
+                {instructions && instructions.length > 0 ? (
+                  <ol className="space-y-2 text-sm text-neutral-300 list-decimal list-inside leading-relaxed pl-1">
+                    {instructions.map((step, idx) => (
+                      <li key={idx} className="text-neutral-300">
+                        <span className="text-neutral-200">{step}</span>
+                      </li>
+                    ))}
+                  </ol>
                 ) : (
-                  <div className="leading-snug text-neutral-500">
-                    Sin músculos primarios activos
-                  </div>
-                )}
-                {effectiveMedia.secondaryEs.length > 0 && (
-                  <div className="leading-snug text-neutral-400">
-                    <span className="font-medium text-neutral-400">Secundarios: </span>
-                    <span className="text-neutral-400">
-                      {effectiveMedia.secondaryEs.join(', ')}
-                    </span>
-                  </div>
+                  <p className="text-xs text-neutral-400">Sin instrucciones registradas.</p>
                 )}
               </div>
-            </div>
-          ) : (
-            <div className="bg-neutral-950 p-3 rounded-xl border border-neutral-800 text-center">
-              <span className="text-xs text-neutral-500">Sin datos de músculos</span>
+
+              {/* Mapa muscular anatómico */}
+              {hasBaseMedia && (
+                <div className="space-y-2 pt-2 border-t border-line">
+                  <div className="flex items-center justify-between">
+                    <span className="label-tech text-neutral-400">
+                      Mapa muscular
+                    </span>
+                    <div className="flex items-center gap-3 label-tech">
+                      {effectiveMedia.primary.length > 0 && (
+                        <span className="text-neutral-200">
+                          {effectiveMedia.primaryEs.join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <BodyMuscleChart
+                    primary={effectiveMedia.primary}
+                    secondary={effectiveMedia.secondary}
+                    size="lg"
+                  />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Ajuste interactivo de músculos trabajados (checkboxes con persistencia) */}
-          {!getExerciseFocusDefinition(exerciseId) && <MuscleToggleList exerciseId={exerciseId} />}
+          {/* Pestaña: Historial */}
+          {activeTab === 'historial' && exercise && (
+            <ExerciseHistoryTab
+              exercise={exercise}
+              workouts={workouts}
+              bodyweightKg={latestBodyweight}
+              unit={unit}
+            />
+          )}
+
+          {/* Pestaña: Músculos */}
+          {activeTab === 'musculos' && (
+            <div className="space-y-4">
+              {!isLegPressFocus ? (
+                <MuscleToggleList exerciseId={exerciseId} />
+              ) : (
+                <div className="p-3 bg-surface-elevated border border-line rounded-md">
+                  <ExerciseFocusSelector exerciseId={exerciseId} />
+                </div>
+              )}
+
+              {hasBaseMedia && (
+                <div className="pt-2 border-t border-line">
+                  <span className="label-tech block mb-2 text-neutral-400">
+                    Vista anatómica
+                  </span>
+                  <BodyMuscleChart
+                    primary={effectiveMedia.primary}
+                    secondary={effectiveMedia.secondary}
+                    size="lg"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Pestaña: Notas */}
+          {activeTab === 'notas' && (
+            <ExerciseNotesTab exerciseId={exerciseId} />
+          )}
+
+          {/* Botón de eliminar si es ejercicio personalizado */}
+          {exercise?.isCustom && (
+            <div className="pt-3 border-t border-line">
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="press w-full min-h-12 flex items-center justify-center gap-2 text-sm font-semibold text-red-400 hover:text-red-300 bg-surface-elevated border border-line rounded-md"
+              >
+                <Trash2 size={16} />
+                <span>Eliminar ejercicio personalizado</span>
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Botones de acción */}
-        <div className="p-3 border-t border-neutral-800 bg-neutral-900/90 flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="py-2.5 px-4 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white transition"
-          >
-            Cerrar
-          </button>
-          <button
-            type="button"
-            onClick={() => onAdd(exerciseId)}
-            className="flex-1 py-2.5 px-4 rounded-xl text-xs font-bold bg-white hover:bg-neutral-200 text-black flex items-center justify-center gap-1.5 transition shadow-sm active:scale-[0.99]"
-          >
-            <Plus size={16} strokeWidth={2.5} />
-            <span>Añadir a la rutina/entreno</span>
-          </button>
-        </div>
+        {/* Footer si se requiere añadir */}
+        {onAdd && (
+          <div className="shrink-0 px-4 py-3 border-t border-line bg-surface">
+            <button
+              type="button"
+              onClick={() => onAdd(exerciseId)}
+              className="btn-primary w-full text-base"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              <span>Añadir a la rutina</span>
+            </button>
+          </div>
+        )}
       </div>
-    </div>
+
+      {confirmingDelete && exercise && (
+        <Sheet
+          title="Eliminar ejercicio"
+          onClose={() => setConfirmingDelete(false)}
+          footer={
+            <button type="button" onClick={handleDelete} className="btn-secondary w-full text-red-400">
+              Eliminar
+            </button>
+          }
+        >
+          <p className="text-[15px] text-neutral-300">
+            ¿Eliminar el ejercicio «{exercise.name}»? Esta acción no se puede deshacer.
+          </p>
+        </Sheet>
+      )}
+    </div>,
+    document.body
   )
 }
