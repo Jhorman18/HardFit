@@ -103,6 +103,25 @@ permitiendo «instalar de orígenes desconocidos».
 > **Sync Supabase en el APK:** las variables `VITE_*` se hornean al compilar. Si compilas con tu `.env`, el APK
 > llevará tu sincronización; si compilas sin `.env`, el APK será **solo-local** (cada quien podría usar su propio backend).
 
+### Publicar una versión
+
+Para empaquetar una nueva actualización y generar los archivos para distribución:
+
+```bash
+npm run publicar -- "Novedades de esta versión"
+```
+
+Si necesitas compilar incluyendo credenciales de sincronización de `.env`, añade `--con-nube`:
+```bash
+npm run publicar -- "Novedades de esta versión" --con-nube
+```
+
+**Reglas obligatorias:**
+- **`git pull` antes:** la rama local `main` debe estar sincronizada y al día con `origin/main`.
+- **Publicar por turnos:** no solapar publicaciones para evitar saltos o conflictos en `versionCode`.
+- **No borrar los archivos en Dropbox:** sube siempre reemplazando con «Actualizar» o «Subir versión» (`HardFit.apk` y `version.json`) para mantener intactos los enlaces de descarga directa configurados en la app.
+- **Keystore privado:** quien compile necesita `android/hardfit.keystore` y `android/keystore.properties`, compartidos por un canal privado y **nunca** en el repositorio.
+
 ---
 
 ## 🛠️ Scripts

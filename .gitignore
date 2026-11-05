@@ -47,3 +47,9 @@ delegar-antigravity/
 
 # Archivos temporales de herramientas de IA
 .codex/
+
+# Firma compartida y versiones publicadas: nunca al repositorio (es público)
+android/keystore.properties
+*.keystore
+*.jks
+release/

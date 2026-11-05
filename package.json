@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "publicar": "node scripts/publicar.mjs",
     "preview": "vite preview",
     "fetch:catalog": "node scripts/fetch-catalog.mjs",
     "fetch:muscles": "node scripts/fetch-exercise-muscles.mjs",

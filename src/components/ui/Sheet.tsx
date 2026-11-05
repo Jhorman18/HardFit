@@ -9,13 +9,15 @@ interface SheetProps {
   children: ReactNode
   /** Zona fija inferior, normalmente la acción principal. */
   footer?: ReactNode
+  /** Si es false, no se puede cerrar con fondo, Esc ni muestra la X. */
+  dismissable?: boolean
 }
 
 /** Hoja modal inferior: se cierra con el fondo, con Esc o con la X. */
-export function Sheet({ title, onClose, children, footer }: SheetProps) {
+export function Sheet({ title, onClose, children, footer, dismissable = true }: SheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
 
-  useDismissable(onClose)
+  useDismissable(onClose, dismissable)
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
@@ -30,7 +32,11 @@ export function Sheet({ title, onClose, children, footer }: SheetProps) {
 
   return createPortal(
     <div className="fixed inset-0 z-[70] flex items-end justify-center">
-      <div className="sheet-scrim absolute inset-0 bg-neutral-950/60" onClick={onClose} aria-hidden="true" />
+      <div
+        className="sheet-scrim absolute inset-0 bg-neutral-950/60"
+        onClick={dismissable ? onClose : undefined}
+        aria-hidden="true"
+      />
       <div
         ref={panelRef}
         role="dialog"
@@ -40,14 +46,16 @@ export function Sheet({ title, onClose, children, footer }: SheetProps) {
       >
         <div className="flex items-center gap-2 pl-4 pr-1 pt-1 shrink-0">
           <h2 className="flex-1 min-w-0 text-xl font-semibold text-white truncate">{title}</h2>
-          <button
-            type="button"
-            aria-label="Cerrar"
-            onClick={onClose}
-            className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-300"
-          >
-            <X size={22} strokeWidth={1.75} />
-          </button>
+          {dismissable && (
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={onClose}
+              className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-300"
+            >
+              <X size={22} strokeWidth={1.75} />
+            </button>
+          )}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-4">{children}</div>
         {footer && <div className="shrink-0 px-4 py-3 border-t border-line">{footer}</div>}

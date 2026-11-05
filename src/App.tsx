@@ -4,6 +4,7 @@ import { seedIfEmpty } from './db'
 import { useWorkoutStore, useAuthStore } from './store'
 import { Layout } from './components/Layout'
 import { BackButtonHandler } from './components/BackButtonHandler'
+import { UpdatePrompt } from './components/UpdatePrompt'
 
 const HomePage = lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })))
 const WorkoutPage = lazy(() => import('./pages/WorkoutPage').then((m) => ({ default: m.WorkoutPage })))
@@ -57,6 +58,7 @@ export function App() {
   return (
     <BrowserRouter>
       <BackButtonHandler />
+      <UpdatePrompt />
       <Suspense fallback={<PageFallback />}>
         <Routes>
           <Route path="/" element={<Layout />}>
