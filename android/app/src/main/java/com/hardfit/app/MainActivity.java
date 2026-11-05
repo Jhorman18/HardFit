@@ -1,4 +1,4 @@
-package com.replog.app;
+package com.hardfit.app;
 
 import android.os.Bundle;
 import com.getcapacitor.BridgeActivity;

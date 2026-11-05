@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.replog.app',
+  appId: 'com.hardfit.app',
   appName: 'HardFit',
   webDir: 'dist'
 };

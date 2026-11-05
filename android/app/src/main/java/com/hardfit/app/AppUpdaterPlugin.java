@@ -1,4 +1,4 @@
-package com.replog.app;
+package com.hardfit.app;
 
 import android.content.Context;
 import android.content.Intent;
