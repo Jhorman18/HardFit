@@ -1,6 +1,22 @@
 import { DEFAULT_BAR_KG } from '../../utils/plates'
 import type { Settings } from '../../types'
 
+function SwitchTrack({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`relative inline-block w-12 h-7 rounded-full border transition-colors ${
+        on ? 'bg-accent border-accent' : 'bg-elevated border-line-strong'
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${
+          on ? 'translate-x-5 bg-accent-fg' : 'translate-x-0 bg-neutral-400'
+        }`}
+      />
+    </span>
+  )
+}
+
 interface TrainingSectionProps {
   settings?: Settings
   patchSettings: (patch: Partial<Omit<Settings, 'id'>>) => Promise<void>
@@ -11,6 +27,7 @@ export function TrainingSection({ settings, patchSettings }: TrainingSectionProp
   const currentRestSeconds = settings?.restSeconds ?? 120
   const currentShowRpe = settings?.showRpe ?? false
   const currentBarKg = settings?.barKg ?? DEFAULT_BAR_KG
+  const currentShowBar = settings?.showBarGlyph ?? true
 
   const handleUnitChange = (unit: 'kg' | 'lb') => {
     patchSettings({ units: unit })
@@ -121,25 +138,36 @@ export function TrainingSection({ settings, patchSettings }: TrainingSectionProp
             onClick={handleRpeToggle}
             className="press min-w-12 min-h-12 flex items-center justify-center shrink-0"
           >
-            <span
-              className={`relative inline-block w-12 h-7 rounded-full border transition-colors ${
-                currentShowRpe
-                  ? 'bg-accent border-accent'
-                  : 'bg-elevated border-line-strong'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full transition-transform ${
-                  currentShowRpe
-                    ? 'translate-x-5 bg-accent-fg'
-                    : 'translate-x-0 bg-neutral-400'
-                }`}
-              />
+            <SwitchTrack on={currentShowRpe} />
+          </button>
+        </div>
+
+        {/* Mostrar barra */}
+        <div
+          className={`min-h-12 py-2 flex items-center justify-between gap-3 ${
+            currentShowBar ? 'border-b border-line' : ''
+          }`}
+        >
+          <div className="min-w-0 pr-2">
+            <span className="text-[15px] text-neutral-300 block">Mostrar barra con discos</span>
+            <span className="text-[11px] text-neutral-400 block mt-0.5">
+              Dibujo y desglose en ejercicios con barra
             </span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={currentShowBar}
+            aria-label="Mostrar barra con discos en el entreno"
+            onClick={() => patchSettings({ showBarGlyph: !currentShowBar })}
+            className="press min-w-12 min-h-12 flex items-center justify-center shrink-0"
+          >
+            <SwitchTrack on={currentShowBar} />
           </button>
         </div>
 
         {/* Barra de referencia */}
+        {currentShowBar && (
         <div className="min-h-12 py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="min-w-0">
             <span className="text-[15px] text-neutral-300 block">Barra de referencia</span>
@@ -172,6 +200,7 @@ export function TrainingSection({ settings, patchSettings }: TrainingSectionProp
             })}
           </div>
         </div>
+        )}
       </div>
     </section>
   )

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useDismissable } from '../components/ui/useDismissable'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Plus } from 'lucide-react'
@@ -21,6 +22,8 @@ export function HistoryPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [previewExerciseId, setPreviewExerciseId] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  // Atrás sale de la edición sin salir del entreno que se está viendo.
+  useDismissable(() => setIsEditing(false), isEditing)
 
   const activeDetailId = routeWorkoutId || selectedIdState
 

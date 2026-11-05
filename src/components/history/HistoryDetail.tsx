@@ -1,10 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { getSetBadge } from '../../utils/setTypes'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Trophy, Trash2, ArrowLeft } from 'lucide-react'
+import { FileText, Trophy, Trash2, ArrowLeft, ListPlus } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Workout, Exercise, WorkoutSetEntry, ExerciseType } from '../../types'
+import { db } from '../../db'
+import { ExerciseDemo } from '../ExerciseDemo'
+import { buildRoutineFromWorkout } from '../../utils/workoutToRoutine'
 import {
   workoutVolume,
   countValidSets,
@@ -22,7 +25,7 @@ import {
   inputWeight,
 } from '../../utils/weightUnits'
 import { formatNumber, formatWeight, formatClock } from '../../utils/format'
-import { ScreenHeader, HeaderIconButton, RecordLights } from '../ui'
+import { ScreenHeader, HeaderIconButton, RecordLights, Sheet } from '../ui'
 
 interface HistoryDetailProps {
   workout: Workout
@@ -82,6 +85,41 @@ export function HistoryDetail({
   onPreviewExercise,
 }: HistoryDetailProps) {
   const navigate = useNavigate()
+
+  const [isSaveRoutineOpen, setIsSaveRoutineOpen] = useState(false)
+  const [routineName, setRoutineName] = useState(workout.name)
+
+  const previewRoutine = useMemo(
+    () => buildRoutineFromWorkout(workout, workout.name),
+    [workout]
+  )
+
+  const hasWarmups = useMemo(() => {
+    return (workout.entries ?? []).some((e) => (e.sets ?? []).some((s) => s.type === 'warmup'))
+  }, [workout])
+
+  const exercisesText = useMemo(() => {
+    if (!previewRoutine) return ''
+    const count = previewRoutine.items.length
+    const phrase =
+      count === 1
+        ? 'Se copia 1 ejercicio con sus pesos y repeticiones.'
+        : `Se copian ${count} ejercicios con sus pesos y repeticiones.`
+    return hasWarmups ? `${phrase} Los calentamientos no se incluyen.` : phrase
+  }, [previewRoutine, hasWarmups])
+
+  const handleCreateRoutine = async () => {
+    const trimmed = routineName.trim()
+    if (!trimmed) return
+    const routine = buildRoutineFromWorkout(workout, trimmed)
+    if (!routine) return
+    try {
+      await db.routines.add(routine)
+      navigate(`/routines/${routine.id}/edit`)
+    } catch (err) {
+      console.error('Error guardando rutina:', err)
+    }
+  }
 
   const workoutDate = new Date(workout.finishedAt || workout.startedAt)
   const dateStr = format(workoutDate, "EEEE d 'de' MMMM", { locale: es })
@@ -206,9 +244,17 @@ export function HistoryDetail({
                     </p>
                   </button>
 
-                  <span className="num text-xs text-neutral-400 shrink-0">
-                    {validSets.length} {validSets.length === 1 ? 'serie' : 'series'}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <ExerciseDemo
+                      exerciseId={entry.exerciseId}
+                      variant="thumb"
+                      alt={ex?.name ?? 'Ejercicio'}
+                      onClick={() => onPreviewExercise(entry.exerciseId)}
+                    />
+                    <span className="num text-xs text-neutral-400">
+                      {validSets.length} {validSets.length === 1 ? 'serie' : 'series'}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -297,6 +343,18 @@ export function HistoryDetail({
         <div className="space-y-3 pt-2">
           <button
             type="button"
+            onClick={() => {
+              setRoutineName(workout.name)
+              setIsSaveRoutineOpen(true)
+            }}
+            className="btn-secondary w-full"
+          >
+            <ListPlus size={18} strokeWidth={1.75} />
+            <span>Guardar como rutina</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => navigate(`/workout/summary/${workout.id}`)}
             className="btn-secondary w-full"
           >
@@ -313,6 +371,50 @@ export function HistoryDetail({
           </button>
         </div>
       </div>
+
+      {isSaveRoutineOpen && (
+        <Sheet
+          title="Guardar como rutina"
+          onClose={() => setIsSaveRoutineOpen(false)}
+          footer={
+            previewRoutine ? (
+              <button
+                type="button"
+                disabled={!routineName.trim()}
+                onClick={handleCreateRoutine}
+                className="btn-primary w-full"
+              >
+                Crear rutina
+              </button>
+            ) : undefined
+          }
+        >
+          {previewRoutine ? (
+            <div className="space-y-4 pt-1">
+              <div className="space-y-1.5">
+                <label htmlFor="save-routine-name" className="label-tech block">
+                  Nombre
+                </label>
+                <input
+                  id="save-routine-name"
+                  type="text"
+                  value={routineName}
+                  onChange={(e) => setRoutineName(e.target.value)}
+                  className="field"
+                  autoFocus
+                />
+              </div>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                {exercisesText}
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-400 py-2">
+              Este entreno no tiene series completadas.
+            </p>
+          )}
+        </Sheet>
+      )}
     </div>
   )
 }

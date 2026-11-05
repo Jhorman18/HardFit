@@ -32,6 +32,7 @@ interface FocusViewProps {
   appUnit: WeightUnit
   showRpe: boolean
   barKg: number
+  showBarGlyph: boolean
   focusEntry: number
   focusSet: number
   onChangeFocus: (entryIndex: number, setIndex: number) => void
@@ -48,6 +49,7 @@ export function FocusView({
   appUnit,
   showRpe,
   barKg,
+  showBarGlyph,
   focusEntry,
   focusSet,
   onChangeFocus,
@@ -323,7 +325,7 @@ export function FocusView({
         )}
 
         {/* Glifo de barra */}
-        {isBar && converted.weight !== undefined && converted.weight > 0 && (
+        {showBarGlyph && isBar && converted.weight !== undefined && converted.weight > 0 && (
           <div className="mt-3 flex justify-center">
             <button
               type="button"

@@ -64,11 +64,11 @@ const ALIASES: Record<string, string> = {
   'curl con barra ez': 'biceps/ez-barbell-curl',
   'curl de pierna sentado': 'hamstrings/lever-seated-leg-curl',
   'elevacion de piernas en barras paralelas': 'abs/captains-chair-straight-leg-raise',
+  'tiron a la cara': 'delts/cable-standing-rear-delt-row-with-rope',
 }
 
 // Sin equivalente en el catálogo: se crean como personalizados en su grupo muscular.
 const CUSTOM_GROUPS: Record<string, string> = {
-  'tiron a la cara': 'Hombro',
   'empuje de cadera (maquina smith)': 'Pierna',
 }
 
@@ -234,6 +234,21 @@ function rememberChoices(plan: HevyImportPlan, choices: Record<string, string>) 
     const remembered = loadRememberedChoices()
     for (const exercise of plan.newExercises) {
       if (choices[exercise.id]) remembered[normalize(exercise.name)] = choices[exercise.id]
+    }
+    localStorage.setItem(CHOICES_KEY, JSON.stringify(remembered))
+  } catch {
+    // Sin almacenamiento disponible se volverá a preguntar en la próxima importación.
+  }
+}
+
+export function rememberHevyReplacement(name: string, fromId: string, toId: string): void {
+  try {
+    const remembered = loadRememberedChoices()
+    remembered[normalize(name)] = toId
+    for (const key of Object.keys(remembered)) {
+      if (remembered[key] === fromId) {
+        remembered[key] = toId
+      }
     }
     localStorage.setItem(CHOICES_KEY, JSON.stringify(remembered))
   } catch {

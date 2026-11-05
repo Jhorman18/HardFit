@@ -93,6 +93,7 @@ export function WorkoutPage() {
     settings && 'barKg' in settings && typeof settings.barKg === 'number'
       ? settings.barKg
       : DEFAULT_BAR_KG
+  const showBarGlyph = !(settings && 'showBarGlyph' in settings && settings.showBarGlyph === false)
 
   useEffect(() => {
     if (!activeWorkout) return
@@ -287,6 +288,7 @@ export function WorkoutPage() {
             appUnit={appUnit}
             efectivoGlobal={efectivoGlobal}
             barKg={barKg}
+            showBarGlyph={showBarGlyph}
             onOpenFoco={openFoco}
             onToggleUnit={handleToggleEntryUnit}
             onOpenSelector={() => setIsSelectorOpen(true)}
@@ -323,6 +325,7 @@ export function WorkoutPage() {
           appUnit={appUnit}
           showRpe={showRpe}
           barKg={barKg}
+          showBarGlyph={showBarGlyph}
           focusEntry={focusEntry}
           focusSet={focusSet}
           onChangeFocus={(ei, si) => {

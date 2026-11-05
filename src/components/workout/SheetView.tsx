@@ -40,6 +40,7 @@ interface SheetViewProps {
   appUnit: WeightUnit
   efectivoGlobal: number
   barKg: number
+  showBarGlyph: boolean
   onOpenFoco: (entryIndex: number, setIndex: number) => void
   onOpenSelector: () => void
   onOpenReplace: (entryIndex: number) => void
@@ -80,6 +81,7 @@ export function SheetView({
   appUnit,
   efectivoGlobal,
   barKg,
+  showBarGlyph,
   onOpenFoco,
   onOpenSelector,
   onOpenReplace,
@@ -119,7 +121,7 @@ export function SheetView({
 
           // Get latest working weight for bar glyph
           const lastSetWithWeight = [...entry.sets].reverse().find((s) => s.weight !== undefined && s.weight > 0)
-          const displayLoad = lastSetWithWeight && isBar ? platesFor(weightInKg(lastSetWithWeight), barKg) : null
+          const displayLoad = showBarGlyph && lastSetWithWeight && isBar ? platesFor(weightInKg(lastSetWithWeight), barKg) : null
 
           return (
             <div key={`${entry.exerciseId}-${entryIndex}`} className="border-b border-line pb-3">
@@ -233,9 +235,13 @@ export function SheetView({
                   <div
                     key={setIndex}
                     onClick={() => onOpenFoco(entryIndex, setIndex)}
-                    className={`grid items-center gap-2 px-1 py-1 border-b border-line/40 cursor-pointer ${
+                    className={`grid items-center gap-2 px-1 py-1 border-b border-line/40 cursor-pointer transition-colors duration-150 ${
                       isWarmup ? 'opacity-60' : ''
-                    } ${isCurrent ? 'bg-elevated rounded-md' : ''}`}
+                    } ${isCurrent ? 'bg-elevated rounded-md' : ''} ${
+                      set.completed
+                        ? 'bg-accent/20 rounded-md [&_input]:bg-transparent [&_input]:border-accent/40'
+                        : ''
+                    }`}
                     style={{ gridTemplateColumns: '40px 80px 1fr 1fr 56px' }}
                   >
                     {/* Serie label + type toggle */}
@@ -365,10 +371,10 @@ export function SheetView({
                         type="button"
                         onClick={() => toggleSetCompleted(entryIndex, setIndex)}
                         className={`press w-14 h-14 rounded-full flex items-center justify-center ${
-                          isCurrent && !set.completed
+                          set.completed
                             ? 'bg-accent text-accent-fg'
-                            : set.completed
-                              ? 'bg-elevated border border-neutral-400 text-white'
+                            : isCurrent
+                              ? 'border-2 border-accent text-accent'
                               : 'border-2 border-line-strong text-neutral-400'
                         }`}
                         aria-label={set.completed ? 'Marcar como pendiente' : 'Confirmar serie'}

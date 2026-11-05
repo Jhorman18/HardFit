@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useDismissable } from './useDismissable'
 
 interface SheetProps {
   title: ReactNode
@@ -13,23 +14,15 @@ interface SheetProps {
 /** Hoja modal inferior: se cierra con el fondo, con Esc o con la X. */
 export function Sheet({ title, onClose, children, footer }: SheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
-  const onCloseRef = useRef(onClose)
 
-  useEffect(() => {
-    onCloseRef.current = onClose
-  }, [onClose])
+  useDismissable(onClose)
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null
     panelRef.current?.focus()
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current()
-    }
-    document.addEventListener('keydown', onKey)
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
-      document.removeEventListener('keydown', onKey)
       document.body.style.overflow = overflow
       previous?.focus?.()
     }

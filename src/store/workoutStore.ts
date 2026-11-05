@@ -50,6 +50,8 @@ export interface WorkoutSessionState {
   setWorkoutRest: (seconds: number) => void
   setEntryRest: (entryIndex: number, seconds: number | null) => void
 
+  remapExercise: (fromId: string, toId: string) => void
+
   // Rehydration
   rehydrate: () => Promise<void>
 }
@@ -350,6 +352,26 @@ export const useWorkoutStore = create<WorkoutSessionState>((set, get) => ({
     }
     set({ activeWorkout: updated })
     persistActiveWorkout(updated)
+  },
+
+  remapExercise: (fromId: string, toId: string) => {
+    const { activeWorkout } = get()
+    if (!activeWorkout) return
+
+    let changed = false
+    const entries = activeWorkout.entries.map((entry) => {
+      if (entry.exerciseId === fromId) {
+        changed = true
+        return { ...entry, exerciseId: toId }
+      }
+      return entry
+    })
+
+    if (changed) {
+      const updated = { ...activeWorkout, entries }
+      set({ activeWorkout: updated })
+      persistActiveWorkout(updated)
+    }
   },
 
   addSet: (entryIndex: number) => {

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useDismissable } from './ui/useDismissable'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Search, X, Plus } from 'lucide-react'
 import { db } from '../db'
@@ -63,6 +64,7 @@ interface ExerciseSelectorModalProps {
   onSelectExercises: (exerciseIds: string[]) => void
   title?: string
   subtitle?: string
+  zIndex?: string
 }
 
 export function ExerciseSelectorModal({
@@ -71,7 +73,9 @@ export function ExerciseSelectorModal({
   onSelectExercises,
   title = 'Añadir ejercicios',
   subtitle = 'Toca un ejercicio para añadirlo a tu entrenamiento.',
+  zIndex = 'z-50',
 }: ExerciseSelectorModalProps) {
+  useDismissable(onClose, isOpen)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMuscle, setSelectedMuscle] = useState('Todos')
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentFilter>('Todos')
@@ -140,7 +144,7 @@ export function ExerciseSelectorModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex justify-center p-0 sm:p-4">
+    <div className={`fixed inset-0 ${zIndex} bg-black/80 flex justify-center p-0 sm:p-4`}>
       <div className="w-full max-w-md h-full sm:h-[90vh] flex flex-col bg-black sm:border border-line sm:rounded-lg overflow-hidden">
         {/* Encabezado */}
         <div className="p-4 border-b border-line flex items-center justify-between bg-surface">

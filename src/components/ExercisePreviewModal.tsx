@@ -11,11 +11,14 @@ import { ExerciseHistoryTab } from './ExerciseHistoryTab'
 import { ExerciseNotesTab } from './ExerciseNotesTab'
 import { SegTabs } from './ui/SegTabs'
 import { Sheet } from './ui/Sheet'
+import { useDismissable } from './ui/useDismissable'
+import { ExerciseSelectorModal } from './ExerciseSelectorModal'
 import { exerciseMedia } from '../data/exerciseMedia'
 import { getEffectiveMedia } from '../utils/effectiveMuscles'
 import { getExerciseFocusDefinition, getExerciseFocusInstructions } from '../data/exerciseFocus'
 import { getLatestBodyweightKg } from '../utils/weightUnits'
-import type { ExerciseType } from '../types'
+import { getExerciseUsage, mergeExercise } from '../utils/mergeExercise'
+import type { Exercise, ExerciseType } from '../types'
 
 export interface ExercisePreviewModalProps {
   exerciseId: string
@@ -52,11 +55,8 @@ export function ExercisePreviewModal({
   const [activeTab, setActiveTab] = useState<PreviewTab>('como')
   const [instructionsMap, setInstructionsMap] = useState<Record<string, string[]> | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
-  const onCloseRef = useRef(onClose)
 
-  useEffect(() => {
-    onCloseRef.current = onClose
-  }, [onClose])
+  useDismissable(onClose)
 
   useEffect(() => {
     if (!instructionsMap) {
@@ -67,14 +67,9 @@ export function ExercisePreviewModal({
   }, [instructionsMap])
 
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current()
-    }
-    document.addEventListener('keydown', onKey)
     const overflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     return () => {
-      document.removeEventListener('keydown', onKey)
       document.body.style.overflow = overflow
     }
   }, [])
@@ -99,6 +94,40 @@ export function ExercisePreviewModal({
   const isLegPressFocus = Boolean(getExerciseFocusDefinition(exerciseId))
 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false)
+  const [targetExercise, setTargetExercise] = useState<Exercise | null>(null)
+  const [targetUsage, setTargetUsage] = useState<{ workouts: number; routines: number } | null>(null)
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const [isMerging, setIsMerging] = useState(false)
+
+  const handleSelectMergeTarget = async (selectedIds: string[]) => {
+    setIsSelectorOpen(false)
+    const targetId = selectedIds[0]
+    if (!targetId || !exercise || targetId === exercise.id) return
+
+    const target = await db.exercises.get(targetId)
+    if (!target) return
+
+    const usage = await getExerciseUsage(exercise.id)
+    setTargetExercise(target)
+    setTargetUsage(usage)
+    setMergeError(null)
+  }
+
+  const handleConfirmMerge = async () => {
+    if (!exercise || !targetExercise || isMerging) return
+    setIsMerging(true)
+    setMergeError(null)
+    try {
+      await mergeExercise(exercise.id, targetExercise.id)
+      onDeleteCustom?.(exercise.id)
+      onClose()
+    } catch (err) {
+      setMergeError(err instanceof Error ? err.message : 'Error al enlazar ejercicios')
+    } finally {
+      setIsMerging(false)
+    }
+  }
 
   const handleDelete = async () => {
     if (!exercise || !exercise.isCustom) return
@@ -269,9 +298,16 @@ export function ExercisePreviewModal({
             <ExerciseNotesTab exerciseId={exerciseId} />
           )}
 
-          {/* Botón de eliminar si es ejercicio personalizado */}
+          {/* Botones de acción si es ejercicio personalizado */}
           {exercise?.isCustom && (
-            <div className="pt-3 border-t border-line">
+            <div className="pt-3 border-t border-line space-y-2">
+              <button
+                type="button"
+                onClick={() => setIsSelectorOpen(true)}
+                className="btn-secondary w-full min-h-12 flex items-center justify-center gap-2 text-sm font-semibold"
+              >
+                <span>Enlazar con otro ejercicio</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
@@ -312,6 +348,69 @@ export function ExercisePreviewModal({
           <p className="text-[15px] text-neutral-300">
             ¿Eliminar el ejercicio «{exercise.name}»? Esta acción no se puede deshacer.
           </p>
+        </Sheet>
+      )}
+
+      {isSelectorOpen && exercise && createPortal(
+        <ExerciseSelectorModal
+          isOpen={isSelectorOpen}
+          zIndex="z-[70]"
+          title="Enlazar con"
+          subtitle={`«${exercise.name}» pasará a ser este ejercicio`}
+          onClose={() => setIsSelectorOpen(false)}
+          onSelectExercises={handleSelectMergeTarget}
+        />,
+        document.body
+      )}
+
+      {targetExercise && targetUsage && exercise && (
+        <Sheet
+          title="Enlazar ejercicio"
+          onClose={() => {
+            setTargetExercise(null)
+            setTargetUsage(null)
+            setMergeError(null)
+          }}
+          footer={
+            <button
+              type="button"
+              disabled={isMerging}
+              onClick={handleConfirmMerge}
+              className="btn-primary w-full text-base"
+            >
+              <span>{isMerging ? 'Enlazando...' : 'Enlazar'}</span>
+            </button>
+          }
+        >
+          <div className="space-y-3 py-1 text-sm text-neutral-300">
+            <div className="flex items-center gap-2 font-medium text-white text-[15px]">
+              <span className="truncate">{exercise.name}</span>
+              <span className="text-neutral-400 shrink-0">→</span>
+              <span className="truncate">{targetExercise.name}</span>
+            </div>
+
+            <p>
+              {targetUsage.workouts} {targetUsage.workouts === 1 ? 'entreno' : 'entrenos'} y{' '}
+              {targetUsage.routines} {targetUsage.routines === 1 ? 'rutina' : 'rutinas'} pasarán a{' '}
+              <span className="text-white font-medium">{targetExercise.name}</span>.
+            </p>
+
+            <p className="text-neutral-400">
+              «{exercise.name}» desaparecerá. No se puede deshacer.
+            </p>
+
+            {exercise.type !== targetExercise.type && (
+              <p className="p-2.5 rounded-md bg-surface-elevated border border-line text-neutral-200 text-xs leading-relaxed">
+                Los dos ejercicios se registran de forma distinta: revisa esos entrenos después.
+              </p>
+            )}
+
+            {mergeError && (
+              <p className="text-xs text-red-400 font-medium">
+                {mergeError}
+              </p>
+            )}
+          </div>
         </Sheet>
       )}
     </div>,
