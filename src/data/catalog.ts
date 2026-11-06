@@ -944,12 +944,16 @@ export const catalog: CatalogExercise[] = [
   },
   {
     "id": "abs/hanging-leg-hip-raise",
-    "name": "Elevación de cadera, colgado, pierna",
+    "name": "Levantamiento de piernas en barra",
     "muscleGroup": "Core",
     "equipment": "Peso corporal",
     "type": "bodyweight_reps",
     "aliases": [
-      "Elevación de cadera, colgado, pierna"
+      "Elevación de cadera, colgado, pierna",
+      "Elevación de rodillas colgado",
+      "Elevación de piernas en barra con rodillas flexionadas",
+      "Abdominales en barra",
+      "Elevaciones de piernas colgado"
     ]
   },
   {
@@ -1215,14 +1219,18 @@ export const catalog: CatalogExercise[] = [
   },
   {
     "id": "abs/lever-seated-crunch-v-2",
-    "name": "Crunch abdominal sentado en máquina",
+    "name": "Crunch Abdominal Corto (Máquina)",
     "muscleGroup": "Core",
     "equipment": "Máquina",
     "type": "weight_reps",
     "aliases": [
       "Crunch en máquina, sentado",
       "crunch",
-      "abdominales"
+      "abdominales",
+      "Crunch abdominal sentado en máquina",
+      "Crunch abdominal corto",
+      "Abdominal corto en máquina",
+      "Abdominales en máquina"
     ]
   },
   {
@@ -5029,13 +5037,18 @@ export const catalog: CatalogExercise[] = [
   },
   {
     "id": "delts/cable-standing-rear-delt-row-with-rope",
-    "name": "Remo de pie en polea",
+    "name": "Tirón a la Cara",
     "muscleGroup": "Hombro",
     "equipment": "Polea",
     "type": "weight_reps",
     "aliases": [
       "Remo de deltoides posterior en polea, de pie, con cuerda",
-      "remo"
+      "remo",
+      "Remo de pie en polea",
+      "Face pull",
+      "Face pulls",
+      "Tirón a la cara con cuerda",
+      "Face pull en polea"
     ]
   },
   {
@@ -6343,14 +6356,19 @@ export const catalog: CatalogExercise[] = [
   },
   {
     "id": "forearms/dumbbell-reverse-wrist-curl",
-    "name": "Curl de bíceps inverso con mancuernas",
-    "muscleGroup": "Bíceps",
+    "name": "Extensión de Muñeca Sentado (Mancuerna)",
+    "muscleGroup": "Antebrazos",
     "equipment": "Mancuerna",
     "type": "weight_reps",
     "aliases": [
       "Curl de muñeca invertido con mancuerna",
       "curl de bíceps",
-      "curl biceps"
+      "curl biceps",
+      "Curl de bíceps inverso con mancuernas",
+      "Extensión de muñeca sentado con mancuernas",
+      "Extensión de muñeca con mancuerna",
+      "Curl inverso de muñeca",
+      "Dumbbell reverse wrist curl"
     ]
   },
   {
@@ -14351,6 +14369,20 @@ export const catalog: CatalogExercise[] = [
     "type": "duration",
     "aliases": [
       "Estiramiento, superior espalda"
+    ]
+  },
+  {
+    "id": "glutes/smith-hip-thrust",
+    "name": "Empuje de Cadera (Máquina Smith)",
+    "muscleGroup": "Pierna",
+    "equipment": "Máquina (Smith)",
+    "type": "weight_reps",
+    "aliases": [
+      "Empuje de Cadera (Maquina Smith)",
+      "Hip thrust en Smith",
+      "Hip thrust en máquina Smith",
+      "Elevación de cadera en Smith con banco",
+      "Empuje de cadera en multipower"
     ]
   }
 ]

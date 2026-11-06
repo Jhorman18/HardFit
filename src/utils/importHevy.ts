@@ -65,12 +65,14 @@ const ALIASES: Record<string, string> = {
   'curl de pierna sentado': 'hamstrings/lever-seated-leg-curl',
   'elevacion de piernas en barras paralelas': 'abs/captains-chair-straight-leg-raise',
   'tiron a la cara': 'delts/cable-standing-rear-delt-row-with-rope',
+  'crunch abdominal corto (maquina)': 'abs/lever-seated-crunch-v-2',
+  'levantamiento de piernas en barra': 'abs/hanging-leg-hip-raise',
+  'empuje de cadera (maquina smith)': 'glutes/smith-hip-thrust',
+  'extension de muneca sentado (mancuerna)': 'forearms/dumbbell-reverse-wrist-curl',
 }
 
 // Sin equivalente en el catálogo: se crean como personalizados en su grupo muscular.
-const CUSTOM_GROUPS: Record<string, string> = {
-  'empuje de cadera (maquina smith)': 'Pierna',
-}
+const CUSTOM_GROUPS: Record<string, string> = {}
 
 export interface HevyImportPlan {
   workouts: Workout[]

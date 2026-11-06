@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { applyCatalogAdditions } from './catalog-additions.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -189,6 +190,8 @@ async function main() {
     }
   }
 
+  applyCatalogAdditions(catalog, exerciseMedia, exerciseInstructions)
+
   const catalogFilePath = path.join(rootDir, 'src', 'data', 'catalog.ts')
   const catalogContent = `// Archivo generado automáticamente por scripts/fetch-catalog.mjs
 // Fuente: JahelCuadrado/ExerciseGymGifsDB (ExerciseDB en español)
@@ -200,6 +203,7 @@ export interface CatalogExercise {
   muscleGroup: string
   equipment: string
   type: ExerciseType
+  aliases?: string[]
 }
 
 export const catalog: CatalogExercise[] = ${JSON.stringify(catalog, null, 2)}

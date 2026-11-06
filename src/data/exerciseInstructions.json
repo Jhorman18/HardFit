@@ -594,11 +594,10 @@
     "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
   ],
   "abs/hanging-leg-hip-raise": [
-    "Adopta la postura inicial con buena alineación corporal.",
-    "Activa el core antes de iniciar el movimiento.",
-    "Realiza el movimiento de forma controlada manteniendo la técnica.",
-    "Vuelve a la posición inicial controlando la fase excéntrica.",
-    "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
+    "Cuélgate de una barra con un agarre cómodo y firme, y estabiliza el cuerpo antes de empezar.",
+    "Eleva las piernas flexionando las rodillas, como en la imagen; acerca las rodillas hacia el tronco sin impulsarte con un balanceo.",
+    "Al final del recorrido, recoge suavemente la pelvis para acompañar la contracción abdominal.",
+    "Baja con control hasta la posición inicial y estabiliza el cuerpo antes de la siguiente repetición. Mantén los brazos extendidos sin tirar del cuerpo con ellos."
   ],
   "abs/hanging-leg-raise": [
     "Adopta la postura inicial con buena alineación corporal.",
@@ -776,11 +775,10 @@
     "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
   ],
   "abs/lever-seated-crunch-v-2": [
-    "Ajusta la máquina a tu medida y selecciona la carga.",
-    "Activa el core antes de iniciar el movimiento.",
-    "Realiza el movimiento de forma controlada manteniendo la técnica.",
-    "Vuelve a la posición inicial controlando la fase excéntrica.",
-    "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
+    "Ajusta el asiento y el apoyo de las piernas para que la máquina se adapte a tu altura. Sujeta las asas y apoya los brazos según el diseño de la máquina.",
+    "Acerca las costillas a la pelvis con una flexión corta y controlada del tronco, siguiendo el recorrido de la máquina.",
+    "Mantén la cadera estable y evita tirar de las asas con los brazos para mover la carga.",
+    "Vuelve despacio hasta la posición inicial, sin rebotes ni una extensión forzada de la espalda. Exhala al contraer e inhala al volver."
   ],
   "abs/lever-seated-leg-raise-crunch": [
     "Ajusta la máquina a tu medida y selecciona la carga.",
@@ -3046,11 +3044,10 @@
     "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
   ],
   "delts/cable-standing-rear-delt-row-with-rope": [
-    "Ajusta la polea a la altura indicada y selecciona el peso.",
-    "Activa los hombros antes de iniciar el movimiento.",
-    "Realiza el movimiento de forma controlada manteniendo la técnica.",
-    "Vuelve a la posición inicial controlando la fase excéntrica.",
-    "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
+    "Coloca una cuerda en una polea aproximadamente a la altura de la cara. Sujeta los extremos y retrocede hasta tensar el cable.",
+    "Con el tronco estable, lleva la cuerda hacia la cara separando sus extremos y abriendo los codos hacia los lados.",
+    "Acerca las manos a los lados de la cabeza y recoge las escápulas con control, sin encoger los hombros ni arquear la espalda para tirar.",
+    "Vuelve despacio hasta extender los brazos, manteniendo la tensión del cable y sin dejar caer la carga."
   ],
   "delts/cable-standing-shoulder-external-rotation": [
     "Ajusta la polea a la altura indicada y selecciona el peso.",
@@ -3864,11 +3861,10 @@
     "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
   ],
   "forearms/dumbbell-reverse-wrist-curl": [
-    "Coge una mancuerna en cada mano (o la indicada) con un peso adecuado.",
-    "Activa los antebrazos antes de iniciar el movimiento.",
-    "Realiza el movimiento de forma controlada manteniendo la técnica.",
-    "Vuelve a la posición inicial controlando la fase excéntrica.",
-    "Mantén la respiración: exhala en el esfuerzo, inhala al volver."
+    "Siéntate en un banco y apoya los antebrazos sobre los muslos, dejando las muñecas y las manos libres más allá de las rodillas.",
+    "Sujeta las mancuernas con las palmas hacia abajo y mantén los codos y los antebrazos apoyados.",
+    "Eleva el dorso de las manos extendiendo únicamente las muñecas, dentro de un recorrido cómodo y sin levantar los antebrazos.",
+    "Baja las mancuernas despacio flexionando las muñecas. Usa una carga que permita moverlas sin rebotes ni balanceos de los brazos."
   ],
   "forearms/dumbbell-seated-one-arm-rotate": [
     "Coge una mancuerna en cada mano (o la indicada) con un peso adecuado.",
@@ -8839,5 +8835,12 @@
     "Lleva el cuerpo a la posición de estiramiento de la espalda alta.",
     "Mantén entre 20 y 40 segundos respirando de forma profunda.",
     "Vuelve a la posición inicial lentamente y repite si lo deseas."
+  ],
+  "glutes/smith-hip-thrust": [
+    "Coloca un banco estable detrás de la barra Smith y apoya en él la parte alta de la espalda. Ajusta los seguros de la máquina antes de empezar.",
+    "Sitúa la barra con una almohadilla sobre el pliegue de las caderas, nunca sobre el abdomen, y apoya ambos pies completamente en el suelo.",
+    "Empuja con los pies y extiende la cadera hasta alinear el tronco con los muslos, manteniendo el abdomen firme y las rodillas alineadas con los pies.",
+    "Contrae los glúteos arriba sin arquear la zona lumbar ni llevar la cabeza hacia atrás.",
+    "Baja la cadera despacio y repite con control. Al terminar, vuelve a colocar la barra en los soportes de la Smith."
   ]
 }

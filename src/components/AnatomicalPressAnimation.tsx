@@ -1,5 +1,6 @@
 import { useId } from 'react'
-import { getAnatomicalPressLayout } from '../data/pressFocus'
+import { getAnatomicalPressLayout, getPressPhaseLayout } from '../data/pressFocus'
+import { ExercisePhaseAnimation } from './ExercisePhaseAnimation'
 
 export interface AnatomicalPressAnimationProps {
   src: string
@@ -10,6 +11,8 @@ export interface AnatomicalPressAnimationProps {
 /** Recorta una sola posición del original y respeta su proporción al reproducirla. */
 export function AnatomicalPressAnimation({ src, alt, onError }: AnatomicalPressAnimationProps) {
   const clipId = useId()
+  const phaseLayout = getPressPhaseLayout(src)
+  if (phaseLayout) return <ExercisePhaseAnimation src={src} alt={alt} layout={phaseLayout} onError={onError} />
   const layout = getAnatomicalPressLayout(src)
   if (!layout) return null
   const { columns, rows, frameAspectRatio } = layout

@@ -1,0 +1,51 @@
+{
+  "date": "2026-11-05",
+  "description": "Originales del usuario copiados sin alterar bytes ni marcas; face-pulls.jpg adjunto dos veces se usa una sola vez.",
+  "assets": [
+    {
+      "exerciseId": "abs/lever-seated-crunch-v-2",
+      "sourceFilename": "images (1).jpeg",
+      "path": "public/exercises/user-added/crunch-abdominal-corto-maquina.jpeg",
+      "sha256": "c34ccf187a9adcacdf9aab64c1e3a108141881db4ce209de359b32d232e52488",
+      "width": 764,
+      "height": 401,
+      "bytes": 31668
+    },
+    {
+      "exerciseId": "abs/hanging-leg-hip-raise",
+      "sourceFilename": "Gemini_Generated_Image_as2ijsas2ijsas2i.jpeg",
+      "path": "public/exercises/user-added/levantamiento-piernas-barra.jpeg",
+      "sha256": "2d7d3d42b7e2237c81a51dfdd34b4f4393da3430d4ff86b07954b9572f0d5bda",
+      "width": 2400,
+      "height": 1792,
+      "bytes": 1648594
+    },
+    {
+      "exerciseId": "glutes/smith-hip-thrust",
+      "sourceFilename": "Hip_Thrust_Muscles_Worked.webp",
+      "path": "public/exercises/user-added/empuje-cadera-smith.webp",
+      "sha256": "5731f25eb72aa3e26c1d7ee9b1f531f68e550400b67a8dd53667dd9ac4c9278a",
+      "width": 1024,
+      "height": 768,
+      "bytes": 40052
+    },
+    {
+      "exerciseId": "delts/cable-standing-rear-delt-row-with-rope",
+      "sourceFilename": "face-pulls.jpg",
+      "path": "public/exercises/user-added/tiron-cara.jpg",
+      "sha256": "a7b559254269fa924778f6fd2a3c4cd35dd45d3ed6f29061b9e8c5f533e50cd7",
+      "width": 1200,
+      "height": 675,
+      "bytes": 85158
+    },
+    {
+      "exerciseId": "forearms/dumbbell-reverse-wrist-curl",
+      "sourceFilename": "0401.webp",
+      "path": "public/exercises/user-added/extension-muneca-sentado.webp",
+      "sha256": "a75ea9c727d7fd33686c0b8d644b96e94e120bc9188078edb63fca995a30a911",
+      "width": 1024,
+      "height": 576,
+      "bytes": 54000
+    }
+  ]
+}

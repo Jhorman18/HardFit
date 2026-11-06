@@ -310,3 +310,18 @@ h1, h2, .font-display {
   .press-anatomy-pose, .press-anatomy-two-poses .press-anatomy-pose { animation: none; opacity: 0; }
   .press-anatomy-pose-0, .press-anatomy-two-poses .press-anatomy-pose-0 { opacity: 1; }
 }
+
+/* Pausa de 1,2 s en cada posición y fundidos de 400 ms entre las dos fases. */
+.exercise-phase-pose { opacity: 1; }
+.exercise-phase-pose-1 {
+  opacity: 0;
+  animation: exercise-phase-crossfade 3.2s ease-in-out infinite;
+}
+@keyframes exercise-phase-crossfade {
+  0%, 37.5%, 100% { opacity: 0; }
+  50%, 87.5% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .exercise-phase-pose { animation: none; opacity: 0; }
+  .exercise-phase-pose-0 { opacity: 1; }
+}

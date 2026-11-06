@@ -40,7 +40,7 @@ export async function seedIfEmpty(): Promise<void> {
     const builtinCount = (await db.exercises.toArray()).filter((ex) => !ex.isCustom).length
     const catalogMissing = builtinCount < catalog.length
 
-    if (currentSeedVersion < 5 || catalogMissing) {
+    if (currentSeedVersion < 6 || catalogMissing) {
       // Solo al migrar de una versión vieja se borran los built-ins antiguos
       // (para eliminar entradas que ya no están en el catálogo nuevo).
       if (currentSeedVersion < 4) {
@@ -59,7 +59,7 @@ export async function seedIfEmpty(): Promise<void> {
       }))
       await db.exercises.bulkPut(records)
 
-      await db.settings.put({ ...appSettings, seedVersion: 5 })
+      await db.settings.put({ ...appSettings, seedVersion: 6 })
     }
   })
 }

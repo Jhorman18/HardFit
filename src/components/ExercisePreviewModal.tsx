@@ -5,6 +5,7 @@ import { X, Plus, Trash2 } from 'lucide-react'
 import { db } from '../db'
 import { ExerciseDemo } from './ExerciseDemo'
 import { BodyMuscleChart } from './BodyMuscleChart'
+import { AbdominalRegionInfo } from './AbdominalRegion'
 import { MuscleToggleList } from './MuscleToggleList'
 import { ExerciseFocusSelector } from './ExerciseFocusSelector'
 import { ExerciseHistoryTab } from './ExerciseHistoryTab'
@@ -91,7 +92,7 @@ export function ExercisePreviewModal({
   const instructions =
     getExerciseFocusInstructions(exerciseId, override?.focus) ?? instructionsMap?.[exerciseId]
 
-  const isLegPressFocus = Boolean(getExerciseFocusDefinition(exerciseId))
+  const hasExerciseFocus = Boolean(getExerciseFocusDefinition(exerciseId))
 
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [isSelectorOpen, setIsSelectorOpen] = useState(false)
@@ -197,8 +198,8 @@ export function ExercisePreviewModal({
           {/* Pestaña: Cómo / Resumen */}
           {activeTab === 'como' && (
             <div className="space-y-4">
-              {/* Enfoque de prensa si aplica */}
-              {isLegPressFocus && (
+              {/* Enfoque o agarre en los ejercicios autorizados */}
+              {hasExerciseFocus && (
                 <div className="p-3 bg-surface-elevated border border-line rounded-md">
                   <ExerciseFocusSelector exerciseId={exerciseId} />
                 </div>
@@ -213,6 +214,8 @@ export function ExercisePreviewModal({
                   alt={exercise?.name || 'Demostración'}
                 />
               </div>
+
+              <AbdominalRegionInfo exerciseId={exerciseId} />
 
               {/* Instrucciones de técnica */}
               <div className="space-y-2">
@@ -270,7 +273,9 @@ export function ExercisePreviewModal({
           {/* Pestaña: Músculos */}
           {activeTab === 'musculos' && (
             <div className="space-y-4">
-              {!isLegPressFocus ? (
+              <AbdominalRegionInfo exerciseId={exerciseId} />
+
+              {!hasExerciseFocus ? (
                 <MuscleToggleList exerciseId={exerciseId} />
               ) : (
                 <div className="p-3 bg-surface-elevated border border-line rounded-md">

@@ -1,0 +1,200 @@
+[
+  {
+    "exercise": {
+      "id": "abs/lever-seated-crunch-v-2",
+      "name": "Crunch Abdominal Corto (Máquina)",
+      "muscleGroup": "Core",
+      "equipment": "Máquina",
+      "type": "weight_reps",
+      "aliases": [
+        "Crunch abdominal sentado en máquina",
+        "Crunch en máquina, sentado",
+        "Crunch abdominal corto",
+        "Abdominal corto en máquina",
+        "Abdominales en máquina"
+      ]
+    },
+    "media": {
+      "gifUrl": "/exercises/user-added/crunch-abdominal-corto-maquina.jpeg",
+      "primary": [
+        "abs"
+      ],
+      "secondary": [
+        "obliques"
+      ],
+      "primaryEs": [
+        "Abdominales"
+      ],
+      "secondaryEs": [
+        "Oblicuos"
+      ]
+    },
+    "instructions": [
+      "Ajusta el asiento y el apoyo de las piernas para que la máquina se adapte a tu altura. Sujeta las asas y apoya los brazos según el diseño de la máquina.",
+      "Acerca las costillas a la pelvis con una flexión corta y controlada del tronco, siguiendo el recorrido de la máquina.",
+      "Mantén la cadera estable y evita tirar de las asas con los brazos para mover la carga.",
+      "Vuelve despacio hasta la posición inicial, sin rebotes ni una extensión forzada de la espalda. Exhala al contraer e inhala al volver."
+    ]
+  },
+  {
+    "exercise": {
+      "id": "abs/hanging-leg-hip-raise",
+      "name": "Levantamiento de piernas en barra",
+      "muscleGroup": "Core",
+      "equipment": "Peso corporal",
+      "type": "bodyweight_reps",
+      "aliases": [
+        "Elevación de cadera, colgado, pierna",
+        "Elevación de rodillas colgado",
+        "Elevación de piernas en barra con rodillas flexionadas",
+        "Abdominales en barra",
+        "Elevaciones de piernas colgado"
+      ]
+    },
+    "media": {
+      "gifUrl": "/exercises/user-added/levantamiento-piernas-barra.jpeg",
+      "primary": [
+        "abs"
+      ],
+      "secondary": [
+        "obliques",
+        "forearm"
+      ],
+      "primaryEs": [
+        "Abdominales"
+      ],
+      "secondaryEs": [
+        "Oblicuos",
+        "Antebrazos"
+      ]
+    },
+    "instructions": [
+      "Cuélgate de una barra con un agarre cómodo y firme, y estabiliza el cuerpo antes de empezar.",
+      "Eleva las piernas flexionando las rodillas, como en la imagen; acerca las rodillas hacia el tronco sin impulsarte con un balanceo.",
+      "Al final del recorrido, recoge suavemente la pelvis para acompañar la contracción abdominal.",
+      "Baja con control hasta la posición inicial y estabiliza el cuerpo antes de la siguiente repetición. Mantén los brazos extendidos sin tirar del cuerpo con ellos."
+    ]
+  },
+  {
+    "exercise": {
+      "id": "glutes/smith-hip-thrust",
+      "name": "Empuje de Cadera (Máquina Smith)",
+      "muscleGroup": "Pierna",
+      "equipment": "Máquina (Smith)",
+      "type": "weight_reps",
+      "aliases": [
+        "Empuje de Cadera (Maquina Smith)",
+        "Hip thrust en Smith",
+        "Hip thrust en máquina Smith",
+        "Elevación de cadera en Smith con banco",
+        "Empuje de cadera en multipower"
+      ]
+    },
+    "media": {
+      "gifUrl": "/exercises/user-added/empuje-cadera-smith.webp",
+      "primary": [
+        "gluteal"
+      ],
+      "secondary": [
+        "hamstring",
+        "abs"
+      ],
+      "primaryEs": [
+        "Glúteos"
+      ],
+      "secondaryEs": [
+        "Isquiotibiales",
+        "Abdominales"
+      ]
+    },
+    "instructions": [
+      "Coloca un banco estable detrás de la barra Smith y apoya en él la parte alta de la espalda. Ajusta los seguros de la máquina antes de empezar.",
+      "Sitúa la barra con una almohadilla sobre el pliegue de las caderas, nunca sobre el abdomen, y apoya ambos pies completamente en el suelo.",
+      "Empuja con los pies y extiende la cadera hasta alinear el tronco con los muslos, manteniendo el abdomen firme y las rodillas alineadas con los pies.",
+      "Contrae los glúteos arriba sin arquear la zona lumbar ni llevar la cabeza hacia atrás.",
+      "Baja la cadera despacio y repite con control. Al terminar, vuelve a colocar la barra en los soportes de la Smith."
+    ]
+  },
+  {
+    "exercise": {
+      "id": "delts/cable-standing-rear-delt-row-with-rope",
+      "name": "Tirón a la Cara",
+      "muscleGroup": "Hombro",
+      "equipment": "Polea",
+      "type": "weight_reps",
+      "aliases": [
+        "Remo de pie en polea",
+        "Remo de deltoides posterior en polea, de pie, con cuerda",
+        "Face pull",
+        "Face pulls",
+        "Tirón a la cara con cuerda",
+        "Face pull en polea"
+      ]
+    },
+    "media": {
+      "gifUrl": "/exercises/user-added/tiron-cara.jpg",
+      "primary": [
+        "back-deltoids"
+      ],
+      "secondary": [
+        "trapezius",
+        "upper-back",
+        "biceps",
+        "forearm"
+      ],
+      "primaryEs": [
+        "Deltoides posteriores"
+      ],
+      "secondaryEs": [
+        "Trapecio",
+        "Espalda alta",
+        "Bíceps",
+        "Antebrazos"
+      ]
+    },
+    "instructions": [
+      "Coloca una cuerda en una polea aproximadamente a la altura de la cara. Sujeta los extremos y retrocede hasta tensar el cable.",
+      "Con el tronco estable, lleva la cuerda hacia la cara separando sus extremos y abriendo los codos hacia los lados.",
+      "Acerca las manos a los lados de la cabeza y recoge las escápulas con control, sin encoger los hombros ni arquear la espalda para tirar.",
+      "Vuelve despacio hasta extender los brazos, manteniendo la tensión del cable y sin dejar caer la carga."
+    ]
+  },
+  {
+    "exercise": {
+      "id": "forearms/dumbbell-reverse-wrist-curl",
+      "name": "Extensión de Muñeca Sentado (Mancuerna)",
+      "muscleGroup": "Antebrazos",
+      "equipment": "Mancuerna",
+      "type": "weight_reps",
+      "aliases": [
+        "Curl de bíceps inverso con mancuernas",
+        "Curl de muñeca invertido con mancuerna",
+        "Extensión de muñeca sentado con mancuernas",
+        "Extensión de muñeca con mancuerna",
+        "Curl inverso de muñeca",
+        "Dumbbell reverse wrist curl"
+      ]
+    },
+    "media": {
+      "gifUrl": "/exercises/user-added/extension-muneca-sentado.webp",
+      "primary": [
+        "forearm"
+      ],
+      "secondary": [
+        "biceps"
+      ],
+      "primaryEs": [
+        "Antebrazos"
+      ],
+      "secondaryEs": [
+        "Bíceps"
+      ]
+    },
+    "instructions": [
+      "Siéntate en un banco y apoya los antebrazos sobre los muslos, dejando las muñecas y las manos libres más allá de las rodillas.",
+      "Sujeta las mancuernas con las palmas hacia abajo y mantén los codos y los antebrazos apoyados.",
+      "Eleva el dorso de las manos extendiendo únicamente las muñecas, dentro de un recorrido cómodo y sin levantar los antebrazos.",
+      "Baja las mancuernas despacio flexionando las muñecas. Usa una carga que permita moverlas sin rebotes ni balanceos de los brazos."
+    ]
+  }
+]

@@ -3,7 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Dumbbell } from 'lucide-react'
 import { exerciseMedia } from '../data/exerciseMedia'
 import { AnatomicalPressAnimation } from './AnatomicalPressAnimation'
-import { isAnatomicalPressAtlas, isFocusPress } from '../data/pressFocus'
+import { ExercisePhaseAnimation } from './ExercisePhaseAnimation'
+import { getExercisePhaseLayout } from '../data/exercisePhases'
+import { isAnatomicalPressAtlas } from '../data/pressFocus'
+import { getExerciseFocusDefinition } from '../data/exerciseFocus'
 import { db } from '../db/db'
 import { getEffectiveMedia } from '../utils/effectiveMuscles'
 
@@ -16,15 +19,15 @@ export interface ExerciseDemoProps {
   onClick?: (e: React.MouseEvent) => void
 }
 
-function PressExerciseDemo(props: ExerciseDemoProps & { exerciseId: string }) {
+function FocusedExerciseDemo(props: ExerciseDemoProps & { exerciseId: string }) {
   const override = useLiveQuery(() => db.muscleOverrides.get(props.exerciseId), [props.exerciseId])
   return <ExerciseDemoImage {...props} gifUrl={getEffectiveMedia(props.exerciseId, override).gifUrl} />
 }
 
 export function ExerciseDemo(props: ExerciseDemoProps) {
-  // Solo estas prensas necesitan consultar la preferencia en sus miniaturas.
-  if (!props.gifUrl && props.exerciseId && isFocusPress(props.exerciseId)) {
-    return <PressExerciseDemo {...props} exerciseId={props.exerciseId} />
+  // Solo las fichas con enfoque o agarre consultan la preferencia en sus miniaturas.
+  if (!props.gifUrl && props.exerciseId && getExerciseFocusDefinition(props.exerciseId)) {
+    return <FocusedExerciseDemo {...props} exerciseId={props.exerciseId} />
   }
   return <ExerciseDemoImage {...props} />
 }
@@ -41,6 +44,7 @@ function ExerciseDemoImage({
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const hasError = Boolean(gifUrl && failedUrl === gifUrl)
   const isAtlas = isAnatomicalPressAtlas(gifUrl)
+  const phaseLayout = getExercisePhaseLayout(gifUrl)
   const isLocalCalf = Boolean(
     gifUrl?.startsWith('/animations/leg-press-anatomical/') && gifUrl.endsWith('.gif')
   )
@@ -53,7 +57,9 @@ function ExerciseDemoImage({
       ? 'w-10 h-10 rounded-sm shrink-0'
       : isAtlas
         ? 'w-full max-w-80 aspect-square rounded-md'
-        : 'w-full aspect-square max-h-72 rounded-md'
+        : phaseLayout
+          ? 'w-full max-w-80 rounded-md'
+          : 'w-full aspect-square max-h-72 rounded-md'
 
   const handleClick = (e: React.MouseEvent) => {
     if (onClick) {
@@ -81,10 +87,19 @@ function ExerciseDemoImage({
     <div
       onClick={handleClick}
       className={`relative bg-surface-elevated border border-line overflow-hidden flex items-center justify-center ${sizeClasses} ${interactiveClasses} ${className}`}
+      style={phaseLayout && variant === 'full' ? { aspectRatio: phaseLayout.frameWidth / phaseLayout.frameHeight } : undefined}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
-      {isAtlas ? (
+      {phaseLayout ? (
+        <ExercisePhaseAnimation
+          key={gifUrl}
+          src={gifUrl}
+          alt={alt}
+          layout={phaseLayout}
+          onError={() => setFailedUrl(gifUrl)}
+        />
+      ) : isAtlas ? (
         <AnatomicalPressAnimation
           key={gifUrl}
           src={gifUrl}

@@ -72,7 +72,7 @@ export function getEffectiveMedia(
     }
   }
 
-  // Solo las dos prensas solicitadas usan dominancia; el resto mantiene sus checkboxes.
+  // Prensas y curls básicos autorizados usan énfasis; el resto conserva sus checkboxes.
   if (getExerciseFocusDefinition(exerciseId)) {
     return resolveExerciseFocus(exerciseId, base, override?.focus)
   }

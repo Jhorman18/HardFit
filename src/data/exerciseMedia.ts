@@ -1024,15 +1024,21 @@ export const exerciseMedia: Record<string, ExerciseMediaItem> = {
     "secondaryEs": []
   },
   "abs/hanging-leg-hip-raise": {
-    "gifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/abs/hanging-leg-hip-raise.gif",
+    "gifUrl": "/exercises/user-added/levantamiento-piernas-barra.jpeg",
     "primary": [
       "abs"
     ],
-    "secondary": [],
+    "secondary": [
+      "obliques",
+      "forearm"
+    ],
     "primaryEs": [
       "Abdominales"
     ],
-    "secondaryEs": []
+    "secondaryEs": [
+      "Oblicuos",
+      "Antebrazos"
+    ]
   },
   "abs/hanging-leg-raise": {
     "gifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/abs/hanging-leg-raise.gif",
@@ -1336,15 +1342,19 @@ export const exerciseMedia: Record<string, ExerciseMediaItem> = {
     "secondaryEs": []
   },
   "abs/lever-seated-crunch-v-2": {
-    "gifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/abs/lever-seated-crunch-v-2.gif",
+    "gifUrl": "/exercises/user-added/crunch-abdominal-corto-maquina.jpeg",
     "primary": [
       "abs"
     ],
-    "secondary": [],
+    "secondary": [
+      "obliques"
+    ],
     "primaryEs": [
       "Abdominales"
     ],
-    "secondaryEs": []
+    "secondaryEs": [
+      "Oblicuos"
+    ]
   },
   "abs/lever-seated-leg-raise-crunch": {
     "gifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/abs/lever-seated-leg-raise-crunch.gif",
@@ -5968,19 +5978,22 @@ export const exerciseMedia: Record<string, ExerciseMediaItem> = {
     ]
   },
   "delts/cable-standing-rear-delt-row-with-rope": {
-    "gifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/delts/cable-standing-rear-delt-row-with-rope.gif",
+    "gifUrl": "/exercises/user-added/tiron-cara.jpg",
     "primary": [
-      "front-deltoids",
       "back-deltoids"
     ],
     "secondary": [
+      "trapezius",
+      "upper-back",
       "biceps",
       "forearm"
     ],
     "primaryEs": [
-      "Hombros"
+      "Deltoides posteriores"
     ],
     "secondaryEs": [
+      "Trapecio",
+      "Espalda alta",
       "Bíceps",
       "Antebrazos"
     ]
@@ -7855,7 +7868,7 @@ export const exerciseMedia: Record<string, ExerciseMediaItem> = {
     ]
   },
   "forearms/dumbbell-reverse-wrist-curl": {
-    "gifUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@v1.1.0/forearms/dumbbell-reverse-wrist-curl.gif",
+    "gifUrl": "/exercises/user-added/extension-muneca-sentado.webp",
     "primary": [
       "forearm"
     ],
@@ -20007,5 +20020,22 @@ export const exerciseMedia: Record<string, ExerciseMediaItem> = {
       "Espalda alta"
     ],
     "secondaryEs": []
+  },
+  "glutes/smith-hip-thrust": {
+    "gifUrl": "/exercises/user-added/empuje-cadera-smith.webp",
+    "primary": [
+      "gluteal"
+    ],
+    "secondary": [
+      "hamstring",
+      "abs"
+    ],
+    "primaryEs": [
+      "Glúteos"
+    ],
+    "secondaryEs": [
+      "Isquiotibiales",
+      "Abdominales"
+    ]
   }
 }

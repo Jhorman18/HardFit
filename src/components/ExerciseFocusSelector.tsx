@@ -1,9 +1,9 @@
 import { useId, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { getPressFocusDemo } from '../data/pressFocus'
 import { db } from '../db/db'
 import {
   getExerciseFocusDefinition,
+  getExerciseFocusDemo,
   getSelectedExerciseFocus,
   type ExerciseFocusId,
 } from '../data/exerciseFocus'
@@ -26,7 +26,7 @@ export function ExerciseFocusSelector({
   if (!definition || override === undefined) return null
 
   const selected = getSelectedExerciseFocus(exerciseId, override?.focus)
-  const demo = getPressFocusDemo(exerciseId, selected?.id)
+  const demo = getExerciseFocusDemo(exerciseId, selected?.id)
 
   const handleSelect = async (focus: ExerciseFocusId) => {
     setIsSaving(true)
@@ -48,10 +48,10 @@ export function ExerciseFocusSelector({
       aria-describedby={`${groupId}-description`}
     >
       <legend className="label-tech text-neutral-300">
-        Enfoque de la variante
+        {definition.title ?? 'Enfoque de la variante'}
       </legend>
       <p id={`${groupId}-description`} className="text-xs text-neutral-400">
-        Selecciona la zona o grupo muscular con mayor énfasis en la ejecución.
+        {definition.description ?? 'Selecciona la zona o grupo muscular con mayor énfasis en la ejecución.'}
       </p>
 
       <div className="grid grid-cols-1 gap-2">
@@ -81,6 +81,12 @@ export function ExerciseFocusSelector({
       </div>
 
       {demo && <p className="text-xs text-neutral-400 leading-relaxed pt-1">{demo.placement}</p>}
+      {definition.title === 'Agarre' && selected && (
+        <p className="text-xs text-neutral-300 leading-relaxed" aria-live="polite">
+          Mayor énfasis: {selected.primary.map(key => key === 'biceps' ? 'bíceps' : 'antebrazo').join(', ')}.
+          {' '}También participa: {selected.secondary.map(key => key === 'biceps' ? 'bíceps' : 'antebrazo').join(', ')}.
+        </p>
+      )}
       {error && <p role="alert" className="text-xs text-red-400">{error}</p>}
     </fieldset>
   )

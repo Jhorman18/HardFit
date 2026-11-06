@@ -9,6 +9,8 @@ import { ExerciseDemo } from '../components/ExerciseDemo'
 import { ExerciseFormModal } from '../components/ExerciseFormModal'
 import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
 import { formatNumber } from '../utils/format'
+import { AbdominalRegionBadge, AbdominalRegionFilter } from '../components/AbdominalRegion'
+import { matchesAbdominalRegion, matchesAbdominalSearch, type AbdominalRegionFilterValue } from '../data/abdominalRegions'
 import type { ExerciseType } from '../types'
 
 const PAGE_SIZE = 60
@@ -21,6 +23,7 @@ const MUSCLE_GROUPS = [
   'Hombro',
   'Bíceps',
   'Tríceps',
+  'Antebrazos',
   'Core',
   'Cardio',
 ]
@@ -28,7 +31,7 @@ const MUSCLE_GROUPS = [
 const EQUIPMENT_FILTERS = ['Todos', 'Máquina', 'Sin máquina'] as const
 type EquipmentFilter = (typeof EQUIPMENT_FILTERS)[number]
 
-const MACHINE_EQUIPMENT: ReadonlySet<string> = new Set(['Máquina', 'Polea'])
+const MACHINE_EQUIPMENT: ReadonlySet<string> = new Set(['Máquina', 'Máquina (Smith)', 'Polea'])
 
 function normalize(text: string): string {
   return text
@@ -58,6 +61,7 @@ export function ExercisesPage() {
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMuscle, setSelectedMuscle] = useState('Todos')
+  const [abdominalRegion, setAbdominalRegion] = useState<AbdominalRegionFilterValue>('all')
   const [selectedEquipment, setSelectedEquipment] = useState<EquipmentFilter>('Todos')
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -74,15 +78,15 @@ export function ExercisesPage() {
     const q = normalize(searchQuery.trim())
     return exercises.filter((ex) => {
       const matchesAliases = ex.aliases?.some((alias) => normalize(alias).includes(q))
-      const matchesSearch = !q || normalize(ex.name).includes(q) || matchesAliases
+      const matchesSearch = !q || normalize(ex.name).includes(q) || matchesAliases || matchesAbdominalSearch(ex.id, q)
       const matchesMuscle = selectedMuscle === 'Todos' || ex.muscleGroup === selectedMuscle
       const isMachine = MACHINE_EQUIPMENT.has(ex.equipment)
       const matchesEquipment =
         selectedEquipment === 'Todos' ||
         (selectedEquipment === 'Máquina' ? isMachine : !isMachine)
-      return matchesSearch && matchesMuscle && matchesEquipment
+      return matchesSearch && matchesMuscle && matchesEquipment && matchesAbdominalRegion(ex.id, abdominalRegion)
     })
-  }, [exercises, searchQuery, selectedMuscle, selectedEquipment])
+  }, [exercises, searchQuery, selectedMuscle, selectedEquipment, abdominalRegion])
 
   const displayedExercises = useMemo(() => {
     return filteredExercises.slice(0, visibleCount)
@@ -95,6 +99,12 @@ export function ExercisesPage() {
 
   const handleMuscleChange = (muscle: string) => {
     setSelectedMuscle(muscle)
+    setAbdominalRegion('all')
+    setVisibleCount(PAGE_SIZE)
+  }
+
+  const handleAbdominalRegionChange = (region: AbdominalRegionFilterValue) => {
+    setAbdominalRegion(region)
     setVisibleCount(PAGE_SIZE)
   }
 
@@ -202,6 +212,10 @@ export function ExercisesPage() {
             })}
           </div>
 
+          {selectedMuscle === 'Core' && (
+            <AbdominalRegionFilter value={abdominalRegion} onChange={handleAbdominalRegionChange} />
+          )}
+
           {/* Filtros de equipamiento con chips de al menos 48 px de área táctil */}
           <div
             className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none"
@@ -275,6 +289,7 @@ export function ExercisesPage() {
                       <span>·</span>
                       <span>{formatExerciseType(exercise.type)}</span>
                     </div>
+                    <AbdominalRegionBadge exerciseId={exercise.id} />
                   </div>
                 </div>
 

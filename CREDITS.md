@@ -48,3 +48,7 @@ Supabase JS, etc.) conservan sus respectivas licencias de código abierto.
 ## Tipografía
 
 - **Archivo** (Omnibus-Type), distribuida con la app mediante `@fontsource-variable/archivo`, bajo licencia **SIL Open Font License 1.1**.
+
+## Imágenes aportadas para cinco ejercicios
+
+El usuario suministró cinco láminas para crunch en máquina, piernas en barra, hip thrust Smith, face pull y extensión de muñeca. Se conservan completas, sin modificar sus bytes ni las marcas presentes. La procedencia por archivo y los hashes constan en [el manifest de imágenes](docs/requested-exercises-images.json). No se atribuye una licencia adicional a estos materiales.

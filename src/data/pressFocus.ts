@@ -1,7 +1,8 @@
 import type { ExerciseFocusId } from './exerciseFocus'
+import type { ExercisePhaseLayout } from './exercisePhases'
 
 export type PressMode = 'horizontal' | 'horizontal-single' | 'inclined'
-export type PressFocusId = Exclude<ExerciseFocusId, 'glutes'>
+export type PressFocusId = 'quadriceps' | 'posterior-chain' | 'calves'
 
 // Alcance explícito: no aplicar por equipo ni a otras máquinas de pierna.
 const PRESS_MODES: Readonly<Record<string, PressMode>> = {
@@ -35,7 +36,7 @@ export function isFocusPress(exerciseId: string): boolean {
 }
 
 export function getPressFocusDemo(exerciseId: string, focus?: ExerciseFocusId) {
-  if (!isFocusPress(exerciseId) || !focus) return undefined
+  if (!isFocusPress(exerciseId) || (focus !== 'quadriceps' && focus !== 'posterior-chain' && focus !== 'calves')) return undefined
   const mode = PRESS_MODES[exerciseId]
   const unilateral = mode === 'horizontal-single'
   const placement = unilateral ? PLACEMENT[focus].replace('Pies', 'Pie').replace('altos', 'alto').replace('talones libres', 'talón libre') : PLACEMENT[focus]
@@ -96,4 +97,27 @@ export function getAnatomicalPressLayout(url?: string): PressAnimationLayout | u
 
 export function isAnatomicalPressAtlas(url?: string): boolean {
   return getAnatomicalPressLayout(url) !== undefined
+}
+
+/** Adapta las seis láminas de prensa al mismo reproductor con fundido de los demás ejercicios. */
+export function getPressPhaseLayout(url?: string): ExercisePhaseLayout | undefined {
+  if (!url) return undefined
+  const layout = getAnatomicalPressLayout(url)
+  if (!layout || layout.columns !== 2 || layout.rows !== 1) return undefined
+  const horizontal = Object.values(USER_PRESS_DEMOS.horizontal ?? {})
+    .some(filename => url === USER_PRESS_ROOT + filename)
+  const frame = (pose: number) => ({
+    x: layout.frames?.[pose]?.x ?? pose * layout.frameAspectRatio,
+    y: 0,
+    clipPoints: layout.frames?.[pose]?.clipPoints,
+  })
+  return {
+    url,
+    sourceWidth: layout.frameAspectRatio * 2,
+    sourceHeight: 1,
+    frameWidth: layout.frameAspectRatio,
+    frameHeight: 1,
+    frames: [frame(0), frame(1)],
+    imageFilter: horizontal ? 'saturate(0.45)' : undefined,
+  }
 }

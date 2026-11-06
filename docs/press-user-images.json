@@ -4,8 +4,11 @@
   "playback": {
     "positions": 2,
     "cycleSeconds": 3.2,
-    "transition": "discrete",
-    "reducedMotion": "first position"
+    "transition": "crossfade",
+    "reducedMotion": "first position",
+    "holdSeconds": 1.2,
+    "transitionSeconds": 0.4,
+    "easing": "ease-in-out"
   },
   "assets": [
     {
@@ -80,5 +83,14 @@
       "columns": 2,
       "rows": 1
     }
-  ]
+  ],
+  "presentation": {
+    "horizontal": {
+      "saturation": 0.45
+    },
+    "inclined": {
+      "saturation": 1
+    },
+    "originalFilesUnchanged": true
+  }
 }
