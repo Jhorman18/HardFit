@@ -1,18 +1,16 @@
-import { useState, type ChangeEvent } from 'react'
+import { useState } from 'react'
 import { formatNumber } from '../../utils/format'
 import {
-  Check,
   X,
   Plus,
   ArrowLeftRight,
   Timer,
   StickyNote,
-  Minus,
 } from 'lucide-react'
 import { useWorkoutStore } from '../../store'
 import { ExerciseDemo } from '../ExerciseDemo'
 import { ExerciseNotesTab } from '../ExerciseNotesTab'
-import { RecordLights, BarGlyph, Sheet, DecimalInput } from '../ui'
+import { RecordLights, BarGlyph, Sheet } from '../ui'
 import {
   getSetNumberLabel,
   formatPreviousSet,
@@ -31,6 +29,9 @@ import { PlateBreakdownSheet } from './PlateBreakdownSheet'
 import { SetTypeSheet } from './SetTypeSheet'
 import { getSetBadge, getSetTypeOption } from '../../utils/setTypes'
 import { formatRest } from '../../utils/formatRest'
+import { SetSummaryRow } from '../SetSummaryRow'
+import { SetEditorFields } from '../SetEditorFields'
+import { formatSetSummary } from '../../utils/setSummary'
 import type { Exercise, WorkoutSetEntry, Workout } from '../../types'
 
 interface SheetViewProps {
@@ -41,6 +42,7 @@ interface SheetViewProps {
   efectivoGlobal: number
   barKg: number
   showBarGlyph: boolean
+  showRpe?: boolean
   onOpenFoco: (entryIndex: number, setIndex: number) => void
   onOpenSelector: () => void
   onOpenReplace: (entryIndex: number) => void
@@ -63,7 +65,7 @@ function UnitToggle({
       type="button"
       onClick={onToggle}
       aria-label={`Unidad ${unit}. Cambiar a ${unit === 'kg' ? 'lb' : 'kg'}`}
-      className="press min-h-12 w-full inline-flex items-center justify-center gap-1 rounded-md"
+      className="press min-h-12 px-2 inline-flex items-center justify-center gap-1 rounded-md"
     >
       <span className="label-tech text-neutral-200">
         {prefix}
@@ -82,6 +84,7 @@ export function SheetView({
   efectivoGlobal,
   barKg,
   showBarGlyph,
+  showRpe,
   onOpenFoco,
   onOpenSelector,
   onOpenReplace,
@@ -178,214 +181,48 @@ export function SheetView({
                 </div>
               </div>
 
-              {/* Cabecera de columnas */}
-              <div
-                className="grid items-center gap-2 px-1 pb-1 border-b border-line text-center"
-                style={{ gridTemplateColumns: '40px 80px 1fr 1fr 56px' }}
-              >
-                <span className="label-tech">Serie</span>
-                <span className="label-tech">Anterior</span>
-                {exerciseType === 'weight_reps' && (
-                  <>
-                    <UnitToggle unit={unit} prefix="" onToggle={() => onToggleUnit(entryIndex)} />
-                    <span className="label-tech">Reps</span>
-                  </>
-                )}
-                {exerciseType === 'bodyweight_reps' && (
-                  <>
-                    <UnitToggle unit={unit} prefix="+" onToggle={() => onToggleUnit(entryIndex)} />
-                    <span className="label-tech">Reps</span>
-                  </>
-                )}
-                {exerciseType === 'bodyweight_assisted' && (
-                  <>
-                    <UnitToggle unit={unit} prefix="-" onToggle={() => onToggleUnit(entryIndex)} />
-                    <span className="label-tech">Reps</span>
-                  </>
-                )}
-                {exerciseType === 'duration' && (
-                  <>
-                    <span className="label-tech">Min</span>
-                    <span className="label-tech">Seg</span>
-                  </>
-                )}
-                {exerciseType === 'distance' && (
-                  <>
-                    <span className="label-tech">Metros</span>
-                    <span className="label-tech">Tiempo</span>
-                  </>
-                )}
-                <span className="label-tech">
-                  <Check size={14} className="mx-auto" />
-                </span>
-              </div>
-
-              {/* Filas de series */}
-              {entry.sets.map((set, setIndex) => {
-                const prevSet = prevSets?.[setIndex]
-                const isWarmup = set.type === 'warmup'
-                const setLabel = getSetNumberLabel(entry.sets, setIndex)
-                const isCurrent =
-                  nextPending?.entryIndex === entryIndex &&
-                  nextPending?.setIndex === setIndex
-                const record = set.completed && isSetRecord(set, prevSet)
-                const converted = convertSetWeight(set, unit)
-
-                return (
-                  <div
-                    key={setIndex}
-                    onClick={() => onOpenFoco(entryIndex, setIndex)}
-                    className={`grid items-center gap-2 px-1 py-1 border-b border-line/40 cursor-pointer transition-colors duration-150 ${
-                      isWarmup ? 'opacity-60' : ''
-                    } ${isCurrent ? 'bg-elevated rounded-md' : ''} ${
-                      set.completed
-                        ? 'bg-accent/20 rounded-md [&_input]:bg-transparent [&_input]:border-accent/40'
-                        : ''
-                    }`}
-                    style={{ gridTemplateColumns: '40px 80px 1fr 1fr 56px' }}
-                  >
-                    {/* Serie label + type toggle */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSetTypeTarget({ entryIndex, setIndex })
-                      }}
-                      className="press min-h-12 flex items-center justify-center num text-lg text-neutral-200"
-                      aria-label={`Serie ${getSetBadge(entry.sets, setIndex)}: ${getSetTypeOption(set.type).label}. Cambiar tipo`}
+              {/* Series resumidas: tocar datos edita; el check confirma y activa el descanso. */}
+              <div className="space-y-0.5">
+                {entry.sets.map((set, setIndex) => {
+                  const prevSet = prevSets?.[setIndex]
+                  const setLabel = getSetNumberLabel(entry.sets, setIndex)
+                  const isCurrent = nextPending?.entryIndex === entryIndex && nextPending?.setIndex === setIndex
+                  const record = set.completed && isSetRecord(set, prevSet)
+                  const converted = convertSetWeight(set, unit)
+                  const rpe = set.rpe === undefined ? '' : `RPE ${formatNumber(set.rpe, 0, 1)} · `
+                  return (
+                    <SetSummaryRow
+                      key={setIndex}
+                      label={getSetBadge(entry.sets, setIndex)}
+                      labelTitle={`Serie ${getSetBadge(entry.sets, setIndex)}: ${getSetTypeOption(set.type).label}. Cambiar tipo`}
+                      onLabelClick={() => setSetTypeTarget({ entryIndex, setIndex })}
+                      editLabel={`Editar serie ${setLabel} de ${exercise?.name ?? 'ejercicio'}`}
+                      summary={formatSetSummary(converted, exerciseType, unit)}
+                      description={set.completed ? 'Completada' : rpe + 'Toca para editar'}
+                      current={isCurrent}
+                      completed={set.completed}
+                      completeLabel={set.completed ? `Marcar serie ${setLabel} de ${exercise?.name ?? 'ejercicio'} como pendiente` : `Confirmar serie ${setLabel} de ${exercise?.name ?? 'ejercicio'}`}
+                      onComplete={() => toggleSetCompleted(entryIndex, setIndex)}
+                      onRemove={entry.sets.length > 1 ? () => removeSet(entryIndex, setIndex) : undefined}
+                      removeLabel={`Quitar serie ${setLabel} de ${exercise?.name ?? 'ejercicio'}`}
+                      status={record ? <RecordLights lit size={6} className="mb-1" /> : undefined}
                     >
-                      {getSetBadge(entry.sets, setIndex)}
-                    </button>
-
-                    {/* Anterior */}
-                    <div className="min-h-12 flex items-center justify-center text-xs num text-neutral-400 whitespace-nowrap truncate">
-                      {formatPreviousSet(exercise, prevSet, unit)}
-                    </div>
-
-                    {/* Inputs según tipo */}
-                    {(exerciseType === 'weight_reps' ||
-                      exerciseType === 'bodyweight_reps' ||
-                      exerciseType === 'bodyweight_assisted') && (
-                      <>
-                        <div className="py-0.5" onClick={(e) => e.stopPropagation()}>
-                          <DecimalInput
-                            placeholder={prevSet?.weight !== undefined ? formatNumber(prevSet.weight, 0, 1) : '-'}
-                            value={converted.weight}
-                            onValueChange={(weight) => updateSet(entryIndex, setIndex, { weight })}
-                            className="w-full min-h-12 rounded-md bg-elevated border border-line-strong text-center num text-xl text-white focus:outline-none focus:ring-2 focus:ring-accent px-1"
-                            aria-label={`Peso serie ${setLabel}`}
-                          />
-                        </div>
-                        <div className="py-0.5" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder={prevSet?.reps !== undefined ? String(prevSet.reps) : '-'}
-                            value={set.reps ?? ''}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                              const v = e.target.value === '' ? undefined : parseInt(e.target.value, 10)
-                              if (v !== undefined && isNaN(v)) return
-                              updateSet(entryIndex, setIndex, { reps: v })
-                            }}
-                            className="w-full min-h-12 rounded-md bg-elevated border border-line-strong text-center num text-xl text-white focus:outline-none focus:ring-2 focus:ring-accent px-1"
-                            aria-label={`Reps serie ${setLabel}`}
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {exerciseType === 'duration' && (
-                      <>
-                        <div className="py-0.5" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="0"
-                            value={set.durationSec !== undefined ? Math.floor(set.durationSec / 60) : ''}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                              const m = e.target.value === '' ? 0 : Number(e.target.value)
-                              const s = (set.durationSec ?? 0) % 60
-                              updateSet(entryIndex, setIndex, { durationSec: m * 60 + s })
-                            }}
-                            className="w-full min-h-12 rounded-md bg-elevated border border-line-strong text-center num text-xl text-white focus:outline-none focus:ring-2 focus:ring-accent px-1"
-                            aria-label={`Minutos serie ${setLabel}`}
-                          />
-                        </div>
-                        <div className="py-0.5" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="0"
-                            value={set.durationSec !== undefined ? set.durationSec % 60 : ''}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                              const s = e.target.value === '' ? 0 : Number(e.target.value)
-                              const m = Math.floor((set.durationSec ?? 0) / 60)
-                              updateSet(entryIndex, setIndex, { durationSec: m * 60 + s })
-                            }}
-                            className="w-full min-h-12 rounded-md bg-elevated border border-line-strong text-center num text-xl text-white focus:outline-none focus:ring-2 focus:ring-accent px-1"
-                            aria-label={`Segundos serie ${setLabel}`}
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {exerciseType === 'distance' && (
-                      <>
-                        <div className="py-0.5" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder={prevSet?.distanceM !== undefined ? String(prevSet.distanceM) : '0'}
-                            value={set.distanceM ?? ''}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                              const v = e.target.value === '' ? undefined : Number(e.target.value)
-                              updateSet(entryIndex, setIndex, { distanceM: v })
-                            }}
-                            className="w-full min-h-12 rounded-md bg-elevated border border-line-strong text-center num text-xl text-white focus:outline-none focus:ring-2 focus:ring-accent px-1"
-                            aria-label={`Metros serie ${setLabel}`}
-                          />
-                        </div>
-                        <div className="py-0.5" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            placeholder="Seg"
-                            value={set.durationSec ?? ''}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                              const v = e.target.value === '' ? undefined : Number(e.target.value)
-                              updateSet(entryIndex, setIndex, { durationSec: v })
-                            }}
-                            className="w-full min-h-12 rounded-md bg-elevated border border-line-strong text-center num text-xl text-white focus:outline-none focus:ring-2 focus:ring-accent px-1"
-                            aria-label={`Tiempo serie ${setLabel}`}
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Check de 56px redondeado */}
-                    <div
-                      className="flex flex-col items-center justify-center py-0.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleSetCompleted(entryIndex, setIndex)}
-                        className={`press w-14 h-14 rounded-full flex items-center justify-center ${
-                          set.completed
-                            ? 'bg-accent text-accent-fg'
-                            : isCurrent
-                              ? 'border-2 border-accent text-accent'
-                              : 'border-2 border-line-strong text-neutral-400'
-                        }`}
-                        aria-label={set.completed ? 'Marcar como pendiente' : 'Confirmar serie'}
-                      >
-                        <Check size={20} strokeWidth={2.5} />
+                      {prevSet && <p className="text-xs text-neutral-400">Anterior: {formatPreviousSet(exercise, prevSet, unit)}</p>}
+                      <SetEditorFields
+                        set={converted}
+                        type={exerciseType}
+                        unit={unit}
+                        label={`serie ${setLabel}`}
+                        showRpe={showRpe}
+                        onChange={patch => updateSet(entryIndex, setIndex, patch)}
+                      />
+                      <button type="button" onClick={() => onOpenFoco(entryIndex, setIndex)} className="press min-h-12 text-xs text-neutral-300">
+                        Ver en foco
                       </button>
-                      {record && <RecordLights lit size={6} className="mt-1" />}
-                    </div>
-                  </div>
-                )
-              })}
+                    </SetSummaryRow>
+                  )
+                })}
+              </div>
 
               {/* Glifo de barra bajo la tabla si procede */}
               {displayLoad && (
@@ -402,36 +239,19 @@ export function SheetView({
                 </div>
               )}
 
-              {/* Botones de acción del ejercicio */}
-              <div className="flex items-center gap-2 mt-3">
-                <button
-                  type="button"
-                  onClick={() => addSet(entryIndex)}
-                  className="press flex-1 min-h-12 flex items-center justify-center gap-1.5 rounded-md bg-elevated border border-line-strong text-sm font-semibold text-neutral-200"
-                >
-                  <Plus size={16} strokeWidth={2} />
-                  <span>Añadir serie</span>
+              {/* Acciones secundarias sin botones de ancho completo. */}
+              <div className="flex items-center justify-between gap-1 mt-1 flex-wrap">
+                <button type="button" onClick={() => addSet(entryIndex)} className="press min-h-12 px-1 flex items-center gap-1 text-xs text-neutral-300">
+                  <Plus size={14} /> Añadir serie
                 </button>
-                {entry.sets.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeSet(entryIndex, entry.sets.length - 1)}
-                    className="press min-h-12 px-3 flex items-center justify-center gap-1 rounded-md bg-elevated border border-line-strong text-xs font-semibold text-neutral-400 hover:text-red-400"
-                    title="Quitar última serie"
-                    aria-label="Quitar última serie"
-                  >
-                    <Minus size={14} strokeWidth={2} />
+                <div className="flex items-center gap-1">
+                  {exerciseType !== 'duration' && exerciseType !== 'distance' && (
+                    <UnitToggle unit={unit} prefix={exerciseType === 'bodyweight_reps' ? '+' : exerciseType === 'bodyweight_assisted' ? '−' : ''} onToggle={() => onToggleUnit(entryIndex)} />
+                  )}
+                  <button type="button" onClick={() => setNoteExerciseId(entry.exerciseId)} className="press min-h-12 px-2 flex items-center gap-1 text-xs text-neutral-300" aria-label="Notas del ejercicio">
+                    <StickyNote size={14} /> Notas
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setNoteExerciseId(entry.exerciseId)}
-                  className="press min-h-12 px-3 flex items-center justify-center gap-1.5 rounded-md bg-elevated border border-line-strong text-sm font-semibold text-neutral-200"
-                  aria-label="Notas del ejercicio"
-                >
-                  <StickyNote size={16} strokeWidth={1.75} />
-                  <span>Notas</span>
-                </button>
+                </div>
               </div>
             </div>
           )

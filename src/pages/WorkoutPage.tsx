@@ -289,6 +289,7 @@ export function WorkoutPage() {
             efectivoGlobal={efectivoGlobal}
             barKg={barKg}
             showBarGlyph={showBarGlyph}
+            showRpe={showRpe}
             onOpenFoco={openFoco}
             onToggleUnit={handleToggleEntryUnit}
             onOpenSelector={() => setIsSelectorOpen(true)}

@@ -8,7 +8,6 @@ import {
   ChevronUp,
   ChevronDown,
   Trash2,
-  X,
   ArrowLeftRight,
 } from 'lucide-react'
 import { db } from '../db'
@@ -19,8 +18,10 @@ import { ExerciseSelectorModal } from '../components/ExerciseSelectorModal'
 import { ExerciseDemo } from '../components/ExerciseDemo'
 import { ExercisePreviewModal } from '../components/ExercisePreviewModal'
 import { formatRest } from '../utils/formatRest'
-import { parseDecimal } from '../utils/format'
-import { DecimalInput } from '../components/ui'
+import { formatNumber } from '../utils/format'
+import { formatSetSummary } from '../utils/setSummary'
+import { SetSummaryRow } from '../components/SetSummaryRow'
+import { SetEditorFields } from '../components/SetEditorFields'
 import {
   asWeightUnit,
   convertSetWeight,
@@ -492,153 +493,31 @@ export function RoutineEditorPage() {
                       </button>
                     </div>
 
-                    {/* Tabla de series objetivo estilo hoja de competición */}
-                    <div className="p-3 overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="label-tech border-b border-line text-neutral-400">
-                            <th className="pb-2 w-10 text-center">Serie</th>
-                            {exType === 'duration' ? (
-                              <th className="pb-2 text-center">Segundos obj.</th>
-                            ) : exType === 'distance' ? (
-                              <>
-                                <th className="pb-2 text-center">Metros obj.</th>
-                                <th className="pb-2 text-center">Segundos obj.</th>
-                              </>
-                            ) : (
-                              <>
-                                <th className="pb-2 w-28 text-center">
-                                  {itemWeightUnit.toUpperCase()} obj.
-                                </th>
-                                <th className="pb-2 w-20 text-center">Reps obj.</th>
-                              </>
-                            )}
-                            <th className="pb-2 w-20 text-center">RPE</th>
-                            <th className="pb-2 w-12 text-center"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-line">
-                          {item.targetSets.map((ts, sIdx) => (
-                            <tr key={sIdx}>
-                              <td className="py-2 px-1 text-center num text-sm text-neutral-300">
-                                {sIdx + 1}
-                              </td>
-
-                              {exType === 'duration' ? (
-                                <td className="py-2 px-1">
-                                  <input
-                                    type="text"
-                                    inputMode="decimal"
-                                    placeholder="60"
-                                    value={ts.durationSec ?? ''}
-                                    onChange={(e) =>
-                                      handleUpdateTargetSet(itemIdx, sIdx, {
-                                        durationSec: parseDecimal(e.target.value),
-                                      })
-                                    }
-                                    className="field text-center num text-base"
-                                  />
-                                </td>
-                              ) : exType === 'distance' ? (
-                                <>
-                                  <td className="py-2 px-1">
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      placeholder="1000"
-                                      value={ts.distanceM ?? ''}
-                                      onChange={(e) =>
-                                        handleUpdateTargetSet(itemIdx, sIdx, {
-                                          distanceM: parseDecimal(e.target.value),
-                                        })
-                                      }
-                                      className="field text-center num text-base"
-                                    />
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    <input
-                                      type="text"
-                                      inputMode="decimal"
-                                      placeholder="300"
-                                      value={ts.durationSec ?? ''}
-                                      onChange={(e) =>
-                                        handleUpdateTargetSet(itemIdx, sIdx, {
-                                          durationSec: parseDecimal(e.target.value),
-                                        })
-                                      }
-                                      className="field text-center num text-base"
-                                    />
-                                  </td>
-                                </>
-                              ) : (
-                                <>
-                                  <td className="py-2 px-1">
-                                    <DecimalInput
-                                      placeholder="0,0"
-                                      value={convertSetWeight(ts, itemWeightUnit).weight}
-                                      onValueChange={(weight) => handleUpdateTargetSet(itemIdx, sIdx, { weight })}
-                                      className="field text-center num text-base"
-                                    />
-                                  </td>
-                                  <td className="py-2 px-1">
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      placeholder="10"
-                                      value={ts.reps ?? ''}
-                                      onChange={(e) =>
-                                        handleUpdateTargetSet(itemIdx, sIdx, {
-                                          reps: parseDecimal(e.target.value),
-                                        })
-                                      }
-                                      className="field text-center num text-base"
-                                    />
-                                  </td>
-                                </>
-                              )}
-
-                              <td className="py-2 px-1">
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="8"
-                                  value={ts.rpe ?? ''}
-                                  onChange={(e) =>
-                                    handleUpdateTargetSet(itemIdx, sIdx, {
-                                      rpe: parseDecimal(e.target.value),
-                                    })
-                                  }
-                                  className="field text-center num text-base text-neutral-300"
-                                />
-                              </td>
-
-                              <td className="py-2 px-1 text-center">
-                                {item.targetSets.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveTargetSet(itemIdx, sIdx)}
-                                    aria-label="Quitar serie objetivo"
-                                    className="press min-w-12 min-h-12 flex items-center justify-center text-neutral-400 active:text-red-400 mx-auto"
-                                  >
-                                    <X size={16} strokeWidth={1.75} />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-
-                      <div className="pt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAddTargetSet(itemIdx)}
-                          className="btn-secondary w-full"
+                    {/* Series objetivo resumidas; la confirmación pertenece al entrenamiento. */}
+                    <div className="px-3 pb-1">
+                      {item.targetSets.map((ts, sIdx) => (
+                        <SetSummaryRow
+                          key={sIdx}
+                          label={sIdx + 1}
+                          editLabel={`Editar serie objetivo ${sIdx + 1} de ${exercise?.name ?? 'ejercicio'}`}
+                          summary={formatSetSummary(convertSetWeight(ts, itemWeightUnit), exType, itemWeightUnit)}
+                          description={ts.rpe === undefined ? 'Objetivo · Toca para editar' : `Objetivo · RPE ${formatNumber(ts.rpe, 0, 1)}`}
+                          onRemove={item.targetSets.length > 1 ? () => handleRemoveTargetSet(itemIdx, sIdx) : undefined}
+                          removeLabel={`Quitar serie objetivo ${sIdx + 1} de ${exercise?.name ?? 'ejercicio'}`}
                         >
-                          <Plus size={16} strokeWidth={2} />
-                          <span>Añadir serie objetivo</span>
-                        </button>
-                      </div>
+                          <SetEditorFields
+                            set={convertSetWeight(ts, itemWeightUnit)}
+                            type={exType}
+                            unit={itemWeightUnit}
+                            label={`serie objetivo ${sIdx + 1}`}
+                            showRpe
+                            onChange={patch => handleUpdateTargetSet(itemIdx, sIdx, patch)}
+                          />
+                        </SetSummaryRow>
+                      ))}
+                      <button type="button" onClick={() => handleAddTargetSet(itemIdx)} className="press min-h-12 px-1 flex items-center gap-1 text-xs text-neutral-300">
+                        <Plus size={14} /> Añadir serie objetivo
+                      </button>
                     </div>
                   </div>
                 )

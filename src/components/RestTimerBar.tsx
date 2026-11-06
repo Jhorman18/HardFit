@@ -3,7 +3,7 @@ import { formatClock } from '../utils/format'
 import { useRestTimeLeft } from '../utils/useRestTimeLeft'
 
 const adjustClass =
-  'press min-h-12 min-w-14 px-2 whitespace-nowrap rounded-md border border-line-strong bg-elevated text-sm font-semibold text-neutral-200'
+  'press min-h-12 min-w-12 px-1 whitespace-nowrap rounded-md text-xs font-medium text-neutral-300 hover:bg-elevated'
 
 interface RestTimerBarProps {
   onExpand?: () => void
@@ -19,7 +19,7 @@ export function RestTimerBar({ onExpand }: RestTimerBarProps) {
   if (!restTimer || timeLeft <= 0) return null
 
   return (
-    <div className="relative shrink-0 border-t border-line bg-surface px-4 py-2 flex items-center justify-between gap-3">
+    <div className="relative shrink-0 border-t border-line bg-surface px-2 py-1 flex items-center justify-between gap-2">
       <span
         className="absolute inset-x-0 top-0 h-0.5 origin-left bg-accent"
         style={{
@@ -36,9 +36,9 @@ export function RestTimerBar({ onExpand }: RestTimerBarProps) {
         aria-label="Descanso restante. Tocar para expandir"
       >
         <span className="label-tech">Descanso</span>
-        <span className="num text-2xl leading-none text-accent">{formatClock(timeLeft)}</span>
+        <span className="num text-lg font-semibold leading-none text-accent">{formatClock(timeLeft)}</span>
       </button>
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-1 min-w-0">
         <button
           type="button"
           className={adjustClass}
